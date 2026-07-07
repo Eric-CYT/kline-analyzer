@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="加密貨幣 K線量化分析系統｜支援 Binance / Bybit / OKX 即時資料、形態識別、回測引擎">
 <title>▣ 加密貨幣 K線分析系統</title>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -11,57 +10,66 @@
   --text:#dde8f5;--g:#22c55e;--r:#ef4444;--bl:#60a5fa;--am:#f59e0b;--pu:#a78bfa;--or:#f97316}
 body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;font-size:12px;
   display:flex;flex-direction:column;height:100vh;overflow:hidden}
-button{cursor:pointer;font-family:'Courier New',monospace;font-size:10px;
-  border-radius:3px;padding:2px 8px;transition:all .15s}
-/* ── Header ── */
+button{cursor:pointer;font-family:'Courier New',monospace;font-size:10px;border-radius:3px;padding:2px 8px;transition:all .15s}
 #hdr{background:var(--card);border-bottom:1px solid var(--bd);padding:6px 12px;
   display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex-shrink:0}
 .logo{color:var(--bl);font-weight:bold;font-size:13px;white-space:nowrap}
 .bgrp{display:flex;gap:3px;flex-wrap:wrap}
-/* Search */
 #srch-wrap{position:relative;display:flex;align-items:center}
-#srch{background:#0a1628;border:1px solid var(--bd);border-radius:3px 0 0 3px;
-  color:var(--text);font-family:'Courier New',monospace;font-size:11px;
-  padding:3px 8px;width:148px;outline:none;transition:border-color .15s}
+#srch{background:#0a1628;border:1px solid var(--bd);border-radius:3px 0 0 3px;color:var(--text);
+  font-family:'Courier New',monospace;font-size:11px;padding:3px 8px;width:148px;outline:none;transition:border-color .15s}
 #srch:focus{border-color:var(--bl)}
-#srch-go{background:#0a1628;border:1px solid var(--bd);border-left:none;border-radius:0 3px 3px 0;
-  color:var(--mid);padding:3px 7px;font-size:11px}
+#srch-go{background:#0a1628;border:1px solid var(--bd);border-left:none;border-radius:0 3px 3px 0;color:var(--mid);padding:3px 7px;font-size:11px}
 #srch-go:hover{color:var(--bl)}
-#srch-clear{position:absolute;right:36px;top:50%;transform:translateY(-50%);
-  background:none;border:none;color:var(--dim);font-size:12px;padding:0 4px;display:none}
-#dd{display:none;position:absolute;top:calc(100% + 4px);left:0;
-  background:#0d1b2e;border:1px solid var(--bd);border-radius:5px;
-  min-width:200px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.6);overflow:hidden}
-.dd-sec{padding:5px 10px 3px;font-size:9px;color:var(--dim);letter-spacing:.05em;
-  border-bottom:1px solid var(--bd)}
-.ddi{display:flex;align-items:center;gap:6px;padding:6px 10px;cursor:pointer;
-  font-size:11px;border-bottom:1px solid #0d1b2e;transition:background .1s}
-.ddi:hover{background:#182d45}
-.ddi:last-child{border-bottom:none}
-/* Refresh */
+#srch-clear{position:absolute;right:36px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--dim);font-size:12px;padding:0 4px;display:none}
+#dd{display:none;position:absolute;top:calc(100% + 4px);left:0;background:#0d1b2e;border:1px solid var(--bd);
+  border-radius:5px;min-width:200px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.6);overflow:hidden}
+.ddi{display:flex;align-items:center;gap:6px;padding:6px 10px;cursor:pointer;font-size:11px;border-bottom:1px solid #0d1b2e;transition:background .1s}
+.ddi:hover{background:#182d45}.ddi:last-child{border-bottom:none}
 #refresh{border:1px solid var(--bd);background:transparent;color:var(--text)}
 #refresh:hover{border-color:var(--bl);color:var(--bl)}
-/* Stats bar */
-#stats-bar{width:100%;display:flex;gap:14px;font-size:10px;padding:2px 0 0;
-  border-top:1px solid var(--bd);margin-top:3px;flex-wrap:wrap}
-/* Error/Loading */
+#stats-bar{width:100%;display:flex;gap:12px;font-size:10px;padding:2px 0 0;
+  border-top:1px solid var(--bd);margin-top:3px;flex-wrap:wrap;align-items:center}
 #err{display:none;background:#2d0a0a;border:1px solid var(--r);border-radius:6px;
-  margin:5px 8px;padding:7px 12px;justify-content:space-between;align-items:center}
+  margin:5px 8px;padding:7px 12px;justify-content:space-between;align-items:center;flex-shrink:0;gap:10px}
 #loading{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:12px}
 .spin{font-size:28px;animation:rot 1s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
-/* Main */
+/* ── Sidebar ── */
+#sidebar{width:175px;background:#090e1a;border-right:1px solid var(--bd);
+  display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+#sb-hdr{display:flex;align-items:stretch;border-bottom:1px solid var(--bd);flex-shrink:0}
+#sb-tabs{display:flex;flex:1}
+.sb-tab{flex:1;padding:6px 2px;border:none;background:transparent;color:var(--mid);font-size:10px;
+  cursor:pointer;border-bottom:2px solid transparent;font-family:'Courier New',monospace;transition:all .15s}
+.sb-tab.on{color:var(--bl);border-bottom-color:var(--bl);background:rgba(96,165,250,0.06)}
+#sb-rf{padding:6px 8px;border:none;background:transparent;color:var(--dim);
+  cursor:pointer;font-size:14px;border-left:1px solid var(--bd)}
+#sb-rf:hover{color:var(--bl)}
+#sb-filter{background:transparent;border:none;border-bottom:1px solid var(--bd);
+  color:var(--text);font-size:10px;padding:5px 8px;width:100%;outline:none;
+  font-family:'Courier New',monospace;flex-shrink:0;letter-spacing:.02em}
+#coin-list{flex:1;overflow-y:auto}
+.ci{display:flex;align-items:center;padding:5px 6px;cursor:pointer;
+  border-bottom:1px solid #0d1825;gap:3px;transition:background .1s;user-select:none}
+.ci:hover{background:#111e30}
+.ci.active{background:#142845;border-left:2px solid var(--bl);padding-left:4px}
+.ci-rank{font-size:9px;color:var(--dim);min-width:16px;text-align:right;flex-shrink:0}
+.ci-mid{flex:1;min-width:0;overflow:hidden}
+.ci-sym{font-size:11px;font-weight:bold;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ci-price{font-size:8px;color:var(--dim);display:block}
+.ci-chg{font-size:9px;flex-shrink:0;min-width:38px;text-align:right}
+.ci-star{font-size:13px;color:var(--dim);flex-shrink:0;padding:0 2px;transition:color .15s;line-height:1}
+.ci-star:hover,.ci-star.on{color:var(--am)}
+/* ── Main area ── */
 #main{display:flex;flex:1;overflow:hidden}
-#charts{flex:1;overflow-y:auto;padding:7px 5px 7px 8px}
-#panel{width:282px;background:var(--card);border-left:1px solid var(--bd);
-  padding:10px;overflow-y:auto;flex-shrink:0}
+#charts{flex:1;overflow-y:auto;padding:7px 5px 7px 7px}
+#panel{width:282px;background:var(--card);border-left:1px solid var(--bd);padding:10px;overflow-y:auto;flex-shrink:0}
 .cbox{background:var(--card);border-radius:7px;margin-bottom:5px;padding:4px 6px}
 .clbl{font-size:9px;color:var(--dim);margin-bottom:2px;display:flex;gap:10px;align-items:center}
 .tab-btn{padding:3px 12px;border-radius:4px;border:none;background:var(--bd);color:var(--mid)}
 .tab-btn.on{background:#1e40af;color:#fff}
-.prow{display:flex;justify-content:space-between;align-items:center;
-  padding:4px 0;border-bottom:1px solid var(--bd)}
-/* Scrollbar */
+.prow{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--bd)}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
@@ -72,24 +80,17 @@ button{cursor:pointer;font-family:'Courier New',monospace;font-size:10px;
 <div id="hdr">
   <span class="logo">▣ K線分析</span>
   <div id="ex-btns" class="bgrp"></div>
-
-  <!-- SEARCH -->
   <div id="srch-wrap">
-    <input id="srch" type="text" placeholder="🔍 加密幣代號 (PEPE, WIF...)"
-           autocomplete="off" spellcheck="false" maxlength="12"
-           oninput="onSrch(this.value)"
-           onkeydown="onSrchKey(event)"
-           onfocus="onSrchFocus()">
+    <input id="srch" type="text" placeholder="🔍 加密幣代號 (PEPE...)"
+           autocomplete="off" spellcheck="false" maxlength="15"
+           oninput="onSrch(this.value)" onkeydown="onSrchKey(event)" onfocus="onSrchFocus()">
     <button id="srch-clear" onclick="clearSrch()">✕</button>
     <button id="srch-go" onclick="doSearch()">GO</button>
     <div id="dd"></div>
   </div>
-
   <div id="coin-btns" class="bgrp"></div>
   <div id="tf-btns" class="bgrp"></div>
   <button id="refresh" onclick="fetchData()">⟳ 刷新</button>
-
-  <!-- stats row -->
   <div id="stats-bar"></div>
 </div>
 
@@ -100,35 +101,44 @@ button{cursor:pointer;font-family:'Courier New',monospace;font-size:10px;
 </div>
 
 <div id="main">
+  <!-- Left Sidebar: Top 100 + Favorites -->
+  <div id="sidebar">
+    <div id="sb-hdr">
+      <div id="sb-tabs">
+        <button id="sb-all" class="sb-tab on" onclick="setSideTab('all')">全部 Top100</button>
+        <button id="sb-fav" class="sb-tab" onclick="setSideTab('fav')">★ 最愛</button>
+      </div>
+      <button id="sb-rf" onclick="fetchTop100()" title="刷新排名">⟳</button>
+    </div>
+    <input id="sb-filter" placeholder="🔍 篩選幣種..." oninput="renderSidebar()">
+    <div id="coin-list">
+      <div style="text-align:center;padding:24px 10px;color:#2d4156">
+        <div style="font-size:22px;margin-bottom:8px">⟳</div>
+        <div style="font-size:10px">載入 Top 100…</div>
+      </div>
+    </div>
+  </div>
   <div id="charts"><div id="chart-content"></div></div>
   <div id="panel"><div id="panel-content"></div></div>
 </div>
 
 <script>
-/* ══ COIN LISTS ══════════════════════════════════════════ */
-const QUICK = ['BTC','ETH','SOL','BNB','XRP','DOGE','ADA','AVAX','DOT','LINK','LTC','MATIC'];
-const ALL_PAIRS = [
-  'BTC','ETH','SOL','BNB','XRP','DOGE','ADA','AVAX','DOT','LINK','LTC','MATIC',
-  'UNI','AAVE','COMP','MKR','CRV','SNX','BAL','YFI','SUSHI','GMX','DYDX',
-  'ARB','OP','INJ','SUI','APT','SEI','TIA','NEAR','FIL','ATOM','ICP','EGLD',
-  'PEPE','WIF','BONK','FLOKI','SHIB','BOME','MEW','NEIRO','MOODENG',
-  'GRT','FET','OCEAN','RNDR','WLD','TAO','AGIX','ARKM',
-  'SAND','MANA','ENJ','IMX','GALA','AXS',
-  'JUP','PYTH','PENDLE','RAY','ORCA',
-  'HBAR','VET','XLM','TRX','EOS','THETA','NEO','WAVES','ZIL','ROSE','CHR',
-  'RUNE','KSM','ZEC','DASH','DCR','XMR','MASK','1000SATS','ORDI'
-];
-const POPULAR = ['BTC','ETH','SOL','XRP','DOGE','PEPE','WIF','ARB','RNDR','INJ'];
-const TFS = ['1D','4H','1H','15M'];
+/* ══ CONFIG ═════════════════════════════════════════════ */
+const QUICK=['BTC','ETH','SOL','BNB','XRP','DOGE','ADA','AVAX','DOT','LINK','LTC','MATIC'];
+const ALL_PAIRS=['BTC','ETH','SOL','BNB','XRP','DOGE','ADA','AVAX','DOT','LINK','LTC','MATIC',
+  'UNI','AAVE','COMP','MKR','CRV','SNX','GMX','DYDX','ARB','OP','INJ','SUI','APT','SEI','TIA',
+  'NEAR','FIL','ATOM','ICP','EGLD','PEPE','WIF','BONK','FLOKI','SHIB','BOME','GRT','FET','OCEAN',
+  'RNDR','WLD','SAND','MANA','ENJ','IMX','JUP','PYTH','PENDLE','HBAR','VET','XLM','TRX','ORDI'];
+const TFS=['1D','4H','1H','15M'];
+const STABLES=new Set(['USDT','USDC','BUSD','DAI','TUSD','USDP','USDD','FRAX','GUSD','LUSD','PYUSD','EURT','FDUSD']);
 
-/* ══ EXCHANGE CONFIG ════════════════════════════════════ */
-const EX = {
+const EX={
   binance:{label:'Binance',color:'#F0B90B',sym:c=>c+'USDT',
     async get(sym,tf,n){
       const iv={'1D':'1d','4H':'4h','1H':'1h','15M':'15m'}[tf];
       const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${iv}&limit=${n}`);
       if(!r.ok)throw new Error(`Binance HTTP ${r.status}`);
-      const d=await r.json();if(!Array.isArray(d))throw new Error('Binance: 異常回應');
+      const d=await r.json();if(!Array.isArray(d))throw new Error('Binance異常回應');
       return d.map((k,i)=>({i,date:fd(+k[0]),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
     }},
   bybit:{label:'Bybit',color:'#F7A600',sym:c=>c+'USDT',
@@ -152,25 +162,48 @@ const EX = {
 /* ══ STATE ══════════════════════════════════════════════ */
 const S={ex:'binance',coin:'BTC',tf:'1D',data:[],loading:false,error:null,tab:'chart',updated:null,
   cl:[],vl:[],macd:{line:[],sig:[],hist:[]},rsi:[],ma200:[],ma50:[],bb:{up:[],mid:[],lo:[]},poc:null,sigs:[],btR:[]};
-
-let recent = JSON.parse(sessionStorage.getItem('kl_rec')||'[]');
+let sideTab='all';
+let top100=[];
+let sbLoading=true;
+let favs=JSON.parse(localStorage.getItem('kl_favs')||'[]');
+let recent=JSON.parse(sessionStorage.getItem('kl_rec')||'[]');
 function addRecent(c){recent=[c,...recent.filter(x=>x!==c)].slice(0,6);sessionStorage.setItem('kl_rec',JSON.stringify(recent));}
 
-/* ══ SEARCH LOGIC ═══════════════════════════════════════ */
-let ddIdx = -1;
+/* ══ FALLBACK TOP50 ═════════════════════════════════════ */
+const FALLBACK=[[1,'BTC','Bitcoin'],[2,'ETH','Ethereum'],[3,'BNB','BNB'],[4,'SOL','Solana'],
+  [5,'XRP','XRP'],[6,'DOGE','Dogecoin'],[7,'ADA','Cardano'],[8,'AVAX','Avalanche'],
+  [9,'SHIB','Shiba Inu'],[10,'DOT','Polkadot'],[11,'LINK','Chainlink'],[12,'MATIC','Polygon'],
+  [13,'LTC','Litecoin'],[14,'UNI','Uniswap'],[15,'ATOM','Cosmos'],[16,'XLM','Stellar'],
+  [17,'ETC','Ethereum Classic'],[18,'APT','Aptos'],[19,'OP','Optimism'],[20,'ARB','Arbitrum'],
+  [21,'NEAR','NEAR Protocol'],[22,'FIL','Filecoin'],[23,'SUI','Sui'],[24,'INJ','Injective'],
+  [25,'TIA','Celestia'],[26,'PEPE','Pepe'],[27,'BONK','Bonk'],[28,'WIF','dogwifhat'],
+  [29,'FLOKI','FLOKI'],[30,'ORDI','ORDI'],[31,'AAVE','Aave'],[32,'GRT','The Graph'],
+  [33,'SAND','The Sandbox'],[34,'MANA','Decentraland'],[35,'CRV','Curve DAO'],
+  [36,'MKR','Maker'],[37,'SNX','Synthetix'],[38,'COMP','Compound'],[39,'GMX','GMX'],
+  [40,'DYDX','dYdX'],[41,'IMX','ImmutableX'],[42,'RNDR','Render'],[43,'FET','Fetch.ai'],
+  [44,'WLD','Worldcoin'],[45,'JUP','Jupiter'],[46,'PYTH','Pyth Network'],
+  [47,'PENDLE','Pendle'],[48,'SEI','Sei'],[49,'HBAR','Hedera'],[50,'VET','VeChain'],
+  [51,'RUNE','THORChain'],[52,'THETA','Theta'],[53,'CHZ','Chiliz'],[54,'GALA','Gala'],
+  [55,'AXS','Axie Infinity'],[56,'ENJ','Enjin'],[57,'ROSE','Oasis'],[58,'ZIL','Zilliqa'],
+  [59,'FTM','Fantom'],[60,'ONE','Harmony'],[61,'KAVA','Kava'],[62,'CELO','Celo'],
+  [63,'STORJ','Storj'],[64,'OCEAN','Ocean Protocol'],[65,'BAT','Basic Attention'],
+  [66,'ZRX','0x Protocol'],[67,'LRC','Loopring'],[68,'SKL','SKALE'],
+  [69,'MASK','Mask Network'],[70,'DUSK','Dusk Network'],
+].map(([rank,symbol,name])=>({rank,symbol,name,price:0,change24h:0}));
 
+/* ══ SEARCH ═════════════════════════════════════════════ */
+let ddIdx=-1;
 function onSrch(val){
-  document.getElementById('srch-clear').style.display = val ? 'block' : 'none';
-  val = val.trim().toUpperCase();
-  if(!val){ showDd([...new Set([...recent,...POPULAR])].slice(0,8),'');return;}
+  document.getElementById('srch-clear').style.display=val?'block':'none';
+  val=val.trim().toUpperCase();
+  if(!val){showDd([...new Set([...recent,...POPULAR])].slice(0,8),'');return;}
   const m=ALL_PAIRS.filter(c=>c.startsWith(val)||c.includes(val)).slice(0,7);
-  if(!m.includes(val)&&val.length>=2) m.push(val);
+  if(!m.includes(val)&&val.length>=2)m.push(val);
   showDd(m.slice(0,8),val);
 }
-
-function showDd(items, q){
-  const dd=document.getElementById('dd');
-  ddIdx=-1;
+const POPULAR=['BTC','ETH','SOL','XRP','DOGE','PEPE','WIF','ARB','RNDR','INJ'];
+function showDd(items,q){
+  const dd=document.getElementById('dd');ddIdx=-1;
   if(!items.length){dd.style.display='none';return;}
   dd.innerHTML=items.map((c,i)=>{
     const isRec=recent.includes(c),isNew=!ALL_PAIRS.includes(c);
@@ -183,63 +216,49 @@ function showDd(items, q){
   }).join('');
   dd.style.display='block';
 }
-
 function hideDd(){document.getElementById('dd').style.display='none';ddIdx=-1;}
-
 function onSrchFocus(){
   const v=document.getElementById('srch').value.trim().toUpperCase();
   const items=v?ALL_PAIRS.filter(c=>c.startsWith(v)||c.includes(v)).slice(0,8)
               :[...new Set([...recent,...POPULAR])].slice(0,8);
   showDd(items,v);
 }
-
 function onSrchKey(e){
   const items=document.querySelectorAll('.ddi');
   if(e.key==='ArrowDown'){e.preventDefault();ddIdx=Math.min(ddIdx+1,items.length-1);items.forEach((el,i)=>el.style.background=i===ddIdx?'#182d45':'');return;}
   if(e.key==='ArrowUp'){e.preventDefault();ddIdx=Math.max(ddIdx-1,-1);items.forEach((el,i)=>el.style.background=i===ddIdx?'#182d45':'');return;}
   if(e.key==='Escape'){hideDd();return;}
-  if(e.key==='Enter'){
-    e.preventDefault();
-    if(ddIdx>=0&&items[ddIdx]){items[ddIdx].click();return;}
-    doSearch();
-  }
+  if(e.key==='Enter'){e.preventDefault();if(ddIdx>=0&&items[ddIdx]){items[ddIdx].click();return;}doSearch();}
 }
-
 function pickCoin(c){
-  document.getElementById('srch').value=c;
-  document.getElementById('srch-clear').style.display='block';
+  if(QUICK.includes(c)){document.getElementById('srch').value='';document.getElementById('srch-clear').style.display='none';}
+  else{document.getElementById('srch').value=c;document.getElementById('srch-clear').style.display='block';}
   hideDd();S.coin=c;addRecent(c);fetchData();
 }
-
 function doSearch(){
   const v=document.getElementById('srch').value.trim().toUpperCase();
-  if(!v)return;
-  hideDd();S.coin=v;addRecent(v);fetchData();
+  if(!v)return;hideDd();S.coin=v;addRecent(v);fetchData();
 }
-
 function clearSrch(){
-  document.getElementById('srch').value='';
-  document.getElementById('srch-clear').style.display='none';
+  document.getElementById('srch').value='';document.getElementById('srch-clear').style.display='none';
   hideDd();document.getElementById('srch').focus();
 }
-
-// Keyboard shortcut: / to focus search
 document.addEventListener('keydown',e=>{
   if(e.key==='/'&&document.activeElement!==document.getElementById('srch')){
-    e.preventDefault();document.getElementById('srch').focus();onSrchFocus();
-  }
+    e.preventDefault();document.getElementById('srch').focus();onSrchFocus();}
 });
-document.addEventListener('click',e=>{
-  if(!document.getElementById('srch-wrap').contains(e.target)) hideDd();
-});
+document.addEventListener('click',e=>{if(!document.getElementById('srch-wrap').contains(e.target))hideDd();});
 
-/* ══ UTILS ═════════════════════════════════════════════ */
+/* ══ UTILS ══════════════════════════════════════════════ */
 const fd=ts=>{const d=new Date(ts);return`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;};
 const fp=v=>{if(v==null)return'-';const a=Math.abs(v);
   if(a>=100000)return(v/1000).toFixed(0)+'K';if(a>=10000)return v.toFixed(0);
   if(a>=100)return v.toFixed(2);return v.toFixed(4);};
+const fpS=v=>{if(!v)return'-';const a=Math.abs(v);
+  if(a>=10000)return(v/1000).toFixed(0)+'K';if(a>=100)return v.toFixed(0);
+  if(a>=1)return v.toFixed(2);if(a>=0.0001)return v.toFixed(4);return v.toExponential(2);};
 
-/* ══ MATH ═══════════════════════════════════════════════ */
+/* ══ MATH ════════════════════════════════════════════════ */
 const _ema=(arr,p)=>{const k=2/(p+1);const res=[];let e=null;
   for(let i=0;i<arr.length;i++){if(arr[i]==null){res.push(null);continue;}
     if(e===null){if(i<p-1){res.push(null);continue;}e=arr.slice(i-p+1,i+1).reduce((a,b)=>a+b)/p;}
@@ -275,27 +294,27 @@ function detectSignals(){
     const n200=ma200A[i]!=null&&Math.abs(c.low-ma200A[i])/ma200A[i]<0.015;
     const r=rsiA[i],r1=rsiA[i-1];const{line:ml,sig:ms,hist:mh}=macdO;let hit=null;
     if(bull&&lw>2.5*body&&uw<0.4*body){
-      let s=2;const co=['下影線≥2.5倍實體','看漲收盤'];
-      if(r!=null&&r<35){co.push(`RSI超賣(${r.toFixed(0)})`);s+=2;}
+      let s=2;const co=['下影線>=2.5倍實體','看漲收盤'];
+      if(r!=null&&r<35){co.push('RSI超賣('+r.toFixed(0)+')');s+=2;}
       if(bbO.lo[i]!=null&&c.low<=bbO.lo[i]){co.push('觸及布林下軌');s++;}
-      if(a200||n200){co.push('MA200支撐位');s++;}if(vs){co.push('成交量放大×1.4');s++;}
+      if(a200||n200){co.push('MA200支撐位');s++;}if(vs){co.push('成交量放大x1.4');s++;}
       if(s>=4)hit={n:'🔨 強力錘子線',co,s,ms:7,tp:0.05,sl:0.025};}
     if(!hit&&bull&&p.close<p.open&&c.open<=p.close*1.003&&c.close>=p.open){
       let s=2;const co=['看漲吞噬型態'];
-      if(r!=null&&r<55){co.push(`RSI(${r.toFixed(0)})`);s++;}
+      if(r!=null&&r<55){co.push('RSI('+r.toFixed(0)+')');s++;}
       if(mh[i]!=null&&mh[i-1]!=null&&mh[i]>0&&mh[i-1]<0){co.push('MACD柱轉正');s+=2;}
       if(a200){co.push('MA200多方');s++;}if(vs){co.push('成交量確認');s++;}
       if(s>=4)hit={n:'🟢 看漲吞噬',co,s,ms:7,tp:0.06,sl:0.03};}
     if(!hit&&ml[i]!=null&&ms[i]!=null&&ml[i-1]!=null&&ms[i-1]!=null&&ml[i]>ms[i]&&ml[i-1]<=ms[i-1]){
       let s=2;const co=['MACD黃金交叉'];
-      if(r!=null&&r>45&&r<72){co.push(`RSI動能(${r.toFixed(0)})`);s+=2;}
+      if(r!=null&&r>45&&r<72){co.push('RSI動能('+r.toFixed(0)+')');s+=2;}
       if(a200){co.push('MA200多頭趨勢');s+=2;}if(vs){co.push('成交量確認');s++;}
       if(mh[i]!=null&&mh[i-1]!=null&&mh[i]>mh[i-1]){co.push('MACD柱擴張');s++;}
       if(s>=4)hit={n:'📈 MACD黃金交叉',co,s,ms:8,tp:0.07,sl:0.035};}
     if(!hit&&bbO.up[i]!=null&&bbO.up[i-1]!=null&&c.close>bbO.up[i]&&p.close<=bbO.up[i-1]){
       let s=2;const co=['突破布林上軌'];
       if(vs){co.push('成交量放大確認');s+=2;}
-      if(r!=null&&r>55&&r<78){co.push(`RSI強勢(${r.toFixed(0)})`);s++;}
+      if(r!=null&&r>55&&r<78){co.push('RSI強勢('+r.toFixed(0)+')');s++;}
       if(a200){co.push('MA200多頭');s++;}if(mh[i]!=null&&mh[i]>0){co.push('MACD正區域');s++;}
       if(s>=4)hit={n:'🚀 布林上軌突破',co,s,ms:7,tp:0.08,sl:0.03};}
     if(!hit&&r1!=null&&r!=null&&r1<30&&r>32&&bull){
@@ -310,7 +329,7 @@ function detectSignals(){
          c0.close>c1.close&&c1.close>c2.close&&Math.abs(c0.open-c1.close)/c1.close<0.006){
         let s=3;const co=['三白兵型態'];
         if(vs){co.push('量能持續放大');s++;}if(a200){co.push('MA200多方');s++;}
-        if(r!=null&&r<70){co.push(`RSI未超買(${r.toFixed(0)})`);s++;}
+        if(r!=null&&r<70){co.push('RSI未超買('+r.toFixed(0)+')');s++;}
         if(s>=4)hit={n:'🏛️ 三白兵',co,s,ms:6,tp:0.07,sl:0.04};}}
     if(hit){const ep=c.close;
       out.push({index:i,date:c.date,close:ep,pattern:hit.n,conds:hit.co,str:hit.s,maxStr:hit.ms,
@@ -324,114 +343,170 @@ function detectSignals(){
 }
 function doBacktest(){
   S.btR=S.sigs.map(s=>{const D=S.data;
-    for(let i=s.index+1;i<D.length&&i<=s.index+30;i++){
-      const c=D[i];
+    for(let i=s.index+1;i<D.length&&i<=s.index+30;i++){const c=D[i];
       if(c.high>=s.tp)return{...s,result:'WIN',exit:s.tp,bars:i-s.index,pnl:+((s.tp-s.entry)/s.entry*100).toFixed(2)};
       if(c.low<=s.sl)return{...s,result:'LOSS',exit:s.sl,bars:i-s.index,pnl:+((s.sl-s.entry)/s.entry*100).toFixed(2)};}
     const e=D[Math.min(s.index+30,D.length-1)].close,pnl=+((e-s.entry)/s.entry*100).toFixed(2);
     return{...s,result:pnl>=0?'WIN':'LOSS',exit:e,bars:30,pnl};});}
 function compute(){
-  const D=S.data;
-  S.cl=D.map(d=>d.close);S.vl=D.map(d=>d.volume);
+  const D=S.data;S.cl=D.map(d=>d.close);S.vl=D.map(d=>d.volume);
   S.macd=S.cl.length?_macd(S.cl):{line:[],sig:[],hist:[]};
   S.rsi=S.cl.length?_rsi(S.cl):[];
   S.ma200=S.cl.length>=200?_sma(S.cl,200):S.cl.map(()=>null);
   S.ma50=S.cl.length>=50?_sma(S.cl,50):S.cl.map(()=>null);
   S.bb=S.cl.length>=20?_bb(S.cl):{up:[],mid:[],lo:[]};
   S.poc=D.length>=20?_poc(D):null;
-  detectSignals();doBacktest();}
+  detectSignals();doBacktest();
+}
 
 /* ══ SVG ════════════════════════════════════════════════ */
-const lp=(arr,tx,ty)=>{let d='';arr.forEach((v,i)=>{if(v!=null)d+=(d?'L':'M')+`${tx(i).toFixed(1)},${ty(v).toFixed(1)}`;});return d;};
+const lp=(arr,tx,ty)=>{let d='';arr.forEach((v,i)=>{if(v!=null)d+=(d?'L':'M')+tx(i).toFixed(1)+','+ty(v).toFixed(1);});return d;};
 const fmtP=v=>{const a=Math.abs(v);
   if(a>=100000)return(v/1000).toFixed(0)+'K';if(a>=10000)return(v/1000).toFixed(1)+'K';
   if(a>=100)return v.toFixed(0);return v.toFixed(4);};
 
 function svgCandle(C,ma200,ma50,bb,poc,sigs,w,h){
   const P={t:12,r:76,b:18,l:6};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=C.length;
-  if(!n)return`<svg width="${w}" height="${h}"></svg>`;
+  if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
   const bw=Math.max(2,cw/n-0.8);
   let mn=Infinity,mx=-Infinity;
   C.forEach(c=>{mn=Math.min(mn,c.low);mx=Math.max(mx,c.high);});
   [...bb.up,...bb.lo,...ma200,...ma50].forEach(v=>{if(v!=null){mn=Math.min(mn,v);mx=Math.max(mx,v);}});
   const pad=(mx-mn)*0.04;mn-=pad;mx+=pad;const R=mx-mn||1;
   const tx=i=>P.l+(i+0.5)*(cw/n),ty=p=>P.t+ch-((p-mn)/R)*ch;
-  let s=`<svg width="${w}" height="${h}" style="display:block;max-width:100%">`;
-  s+=`<rect x="${P.l}" y="${P.t}" width="${cw}" height="${ch}" fill="#090e1a" rx="3"/>`;
+  let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
+  s+='<rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#090e1a" rx="3"/>';
   [0,.25,.5,.75,1].forEach(f=>{const p=mn+f*R,y=ty(p).toFixed(1);
-    s+=`<line x1="${P.l}" x2="${P.l+cw}" y1="${y}" y2="${y}" stroke="#12213a" stroke-width="1" stroke-dasharray="4 3"/>`;
-    s+=`<text x="${P.l+cw+4}" y="${(ty(p)+4).toFixed(1)}" fill="#3a5070" font-size="9" font-family="monospace">${fmtP(p)}</text>`;});
+    s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="#12213a" stroke-width="1" stroke-dasharray="4 3"/>';
+    s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(p)+4).toFixed(1)+'" fill="#3a5070" font-size="9" font-family="monospace">'+fmtP(p)+'</text>';});
   if(poc!=null){const py=ty(poc).toFixed(1);
-    s+=`<line x1="${P.l}" x2="${P.l+cw}" y1="${py}" y2="${py}" stroke="#9333ea" stroke-width="1.5" stroke-dasharray="6 3" opacity=".85"/>`;
-    s+=`<text x="${P.l+cw+4}" y="${(ty(poc)-2).toFixed(1)}" fill="#9333ea" font-size="8" font-family="monospace">POC</text>`;
-    s+=`<text x="${P.l+cw+4}" y="${(ty(poc)+9).toFixed(1)}" fill="#7c3aed" font-size="8" font-family="monospace">${fmtP(poc)}</text>`;}
-  const upPts=bb.up.map((v,i)=>v!=null?`${tx(i).toFixed(1)},${ty(v).toFixed(1)}`:null).filter(Boolean);
-  const loPts=bb.lo.map((v,i)=>v!=null?`${tx(i).toFixed(1)},${ty(v).toFixed(1)}`:null).filter(Boolean);
-  if(upPts.length&&loPts.length)s+=`<path d="M${upPts.join('L')}L${loPts.slice().reverse().join('L')}Z" fill="rgba(59,130,246,0.055)"/>`;
+    s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+py+'" y2="'+py+'" stroke="#9333ea" stroke-width="1.5" stroke-dasharray="6 3" opacity=".85"/>';
+    s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(poc)-2).toFixed(1)+'" fill="#9333ea" font-size="8" font-family="monospace">POC</text>';
+    s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(poc)+9).toFixed(1)+'" fill="#7c3aed" font-size="8" font-family="monospace">'+fmtP(poc)+'</text>';}
+  const upPts=bb.up.map((v,i)=>v!=null?tx(i).toFixed(1)+','+ty(v).toFixed(1):null).filter(Boolean);
+  const loPts=bb.lo.map((v,i)=>v!=null?tx(i).toFixed(1)+','+ty(v).toFixed(1):null).filter(Boolean);
+  if(upPts.length&&loPts.length)s+='<path d="M'+upPts.join('L')+'L'+loPts.slice().reverse().join('L')+'Z" fill="rgba(59,130,246,0.055)"/>';
   const bbU=lp(bb.up,tx,ty),bbL=lp(bb.lo,tx,ty),bbM=lp(bb.mid,tx,ty);
-  if(bbU)s+=`<path d="${bbU}" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>`;
-  if(bbL)s+=`<path d="${bbL}" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>`;
-  if(bbM)s+=`<path d="${bbM}" fill="none" stroke="#6366f1" stroke-width="1" opacity=".45"/>`;
-  const m5=lp(ma50,tx,ty);if(m5)s+=`<path d="${m5}" fill="none" stroke="#38bdf8" stroke-width="1.2" opacity=".75" stroke-dasharray="5 2"/>`;
-  const m2=lp(ma200,tx,ty);if(m2)s+=`<path d="${m2}" fill="none" stroke="#f59e0b" stroke-width="1.5" opacity=".9"/>`;
+  if(bbU)s+='<path d="'+bbU+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';
+  if(bbL)s+='<path d="'+bbL+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';
+  if(bbM)s+='<path d="'+bbM+'" fill="none" stroke="#6366f1" stroke-width="1" opacity=".45"/>';
+  const m5=lp(ma50,tx,ty);if(m5)s+='<path d="'+m5+'" fill="none" stroke="#38bdf8" stroke-width="1.2" opacity=".75" stroke-dasharray="5 2"/>';
+  const m2=lp(ma200,tx,ty);if(m2)s+='<path d="'+m2+'" fill="none" stroke="#f59e0b" stroke-width="1.5" opacity=".9"/>';
   C.forEach((c,i)=>{const x=tx(i),col=c.close>=c.open?'#22c55e':'#ef4444';
     const bt=ty(Math.max(c.open,c.close)),bb2=ty(Math.min(c.open,c.close));
-    s+=`<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${ty(c.high).toFixed(1)}" y2="${ty(c.low).toFixed(1)}" stroke="${col}" stroke-width="1"/>`;
-    s+=`<rect x="${(x-bw/2).toFixed(1)}" y="${bt.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,bb2-bt).toFixed(1)}" fill="${col}" opacity=".9"/>`;});
+    s+='<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+ty(c.high).toFixed(1)+'" y2="'+ty(c.low).toFixed(1)+'" stroke="'+col+'" stroke-width="1"/>';
+    s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+bt.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(1,bb2-bt).toFixed(1)+'" fill="'+col+'" opacity=".9"/>';});
   sigs.forEach(sig=>{const li=sig.index-(C[0]?.i||0);if(li<0||li>=n)return;
     const x=tx(li),y=ty(C[li]?.low??sig.close)+13;
-    s+=`<polygon points="${x.toFixed(1)},${y.toFixed(1)} ${(x-5).toFixed(1)},${(y+9).toFixed(1)} ${(x+5).toFixed(1)},${(y+9).toFixed(1)}" fill="#f59e0b" opacity=".95"/>`;
-    s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2" fill="#fde68a"/>`;});
+    s+='<polygon points="'+x.toFixed(1)+','+y.toFixed(1)+' '+(x-5).toFixed(1)+','+(y+9).toFixed(1)+' '+(x+5).toFixed(1)+','+(y+9).toFixed(1)+'" fill="#f59e0b" opacity=".95"/>';
+    s+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="2" fill="#fde68a"/>';});
   const ev=Math.max(1,Math.floor(n/8));
   C.forEach((c,i)=>{if(i%ev!==0)return;
-    s+=`<text x="${tx(i).toFixed(1)}" y="${(P.t+ch+13).toFixed(1)}" text-anchor="middle" fill="#253a52" font-size="9" font-family="monospace">${c.date}</text>`;});
+    s+='<text x="'+tx(i).toFixed(1)+'" y="'+(P.t+ch+13).toFixed(1)+'" text-anchor="middle" fill="#253a52" font-size="9" font-family="monospace">'+c.date+'</text>';});
   return s+'</svg>';}
 
 function svgVol(sub,w,h){
   const P={t:4,r:76,b:2,l:6};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=sub.length;
-  if(!n)return`<svg width="${w}" height="${h}"></svg>`;
+  if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
   const bw=Math.max(2,cw/n-0.8),maxV=Math.max(...sub.map(d=>d.vol));
   const tx=i=>P.l+(i+0.5)*(cw/n);
-  let s=`<svg width="${w}" height="${h}" style="display:block;max-width:100%">`;
-  s+=`<rect x="${P.l}" y="${P.t}" width="${cw}" height="${ch}" fill="#090e1a" rx="3"/>`;
+  let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
+  s+='<rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#090e1a" rx="3"/>';
   sub.forEach((d,i)=>{const x=tx(i),bh=Math.max(1,(d.vol/maxV)*ch);
-    s+=`<rect x="${(x-bw/2).toFixed(1)}" y="${(P.t+ch-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="${d.bull?'#22c55e':'#ef4444'}" opacity=".45" rx="1"/>`;});
+    s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+(P.t+ch-bh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+(d.bull?'#22c55e':'#ef4444')+'" opacity=".45" rx="1"/>';});
   return s+'</svg>';}
 
 function svgMACD(sub,w,h){
   const P={t:4,r:76,b:4,l:38};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=sub.length;
-  if(!n)return`<svg width="${w}" height="${h}"></svg>`;
+  if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
   const bw=Math.max(2,cw/n-0.8);
   const vals=[...sub.map(d=>d.hist),...sub.map(d=>d.macd),...sub.map(d=>d.sig)].filter(v=>v!=null&&isFinite(v));
-  if(!vals.length)return`<svg width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="#090e1a" rx="3"/></svg>`;
+  if(!vals.length)return'<svg width="'+w+'" height="'+h+'"><rect width="'+w+'" height="'+h+'" fill="#090e1a" rx="3"/></svg>';
   let mn=Math.min(...vals),mx=Math.max(...vals);const pad=(mx-mn)*0.12||0.001;mn-=pad;mx+=pad;
   const R=mx-mn||1,tx=i=>P.l+(i+0.5)*(cw/n),ty=v=>P.t+ch-((v-mn)/R)*ch,zY=ty(0);
   const fY=v=>{const a=Math.abs(v);if(a>=1000)return(v/1000).toFixed(1)+'K';if(a>=1)return v.toFixed(1);if(a>=0.01)return v.toFixed(3);return v.toFixed(6);};
-  let s=`<svg width="${w}" height="${h}" style="display:block;max-width:100%">`;
-  s+=`<rect x="${P.l}" y="${P.t}" width="${cw}" height="${ch}" fill="#090e1a" rx="3"/>`;
+  let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
+  s+='<rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#090e1a" rx="3"/>';
   [mn,0,mx].forEach(v=>{const y=ty(v).toFixed(1);
-    s+=`<line x1="${P.l}" x2="${P.l+cw}" y1="${y}" y2="${y}" stroke="${v===0?'#2d4156':'#12213a'}" stroke-width="${v===0?1.5:1}" ${v!==0?'stroke-dasharray="3 3"':''}/>`;
-    s+=`<text x="${P.l-3}" y="${(ty(v)+3).toFixed(1)}" text-anchor="end" fill="#3a5070" font-size="8" font-family="monospace">${fY(v)}</text>`;});
+    s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="'+(v===0?'#2d4156':'#12213a')+'" stroke-width="'+(v===0?1.5:1)+'" '+(v!==0?'stroke-dasharray="3 3"':'')+'/>';
+    s+='<text x="'+(P.l-3)+'" y="'+(ty(v)+3).toFixed(1)+'" text-anchor="end" fill="#3a5070" font-size="8" font-family="monospace">'+fY(v)+'</text>';});
   sub.forEach((d,i)=>{if(d.hist==null||!isFinite(d.hist))return;
     const x=tx(i),hY=ty(d.hist),top=Math.min(hY,zY),ht=Math.max(1,Math.abs(hY-zY));
-    s+=`<rect x="${(x-bw/2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${ht.toFixed(1)}" fill="${d.hist>=0?'#22c55e':'#ef4444'}" opacity=".7" rx="1"/>`;});
-  const mp=lp(sub.map(d=>d.macd),tx,ty);if(mp)s+=`<path d="${mp}" fill="none" stroke="#60a5fa" stroke-width="1.5"/>`;
-  const sp=lp(sub.map(d=>d.sig),tx,ty);if(sp)s+=`<path d="${sp}" fill="none" stroke="#f97316" stroke-width="1"/>`;
+    s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ht.toFixed(1)+'" fill="'+(d.hist>=0?'#22c55e':'#ef4444')+'" opacity=".7" rx="1"/>';});
+  const mp=lp(sub.map(d=>d.macd),tx,ty);if(mp)s+='<path d="'+mp+'" fill="none" stroke="#60a5fa" stroke-width="1.5"/>';
+  const sp=lp(sub.map(d=>d.sig),tx,ty);if(sp)s+='<path d="'+sp+'" fill="none" stroke="#f97316" stroke-width="1"/>';
   return s+'</svg>';}
 
 function svgRSI(sub,w,h){
   const P={t:4,r:76,b:4,l:28};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=sub.length;
-  if(!n)return`<svg width="${w}" height="${h}"></svg>`;
+  if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
   const tx=i=>P.l+(i+0.5)*(cw/n),ty=v=>P.t+ch-((v/100)*ch);
-  let s=`<svg width="${w}" height="${h}" style="display:block;max-width:100%">`;
-  s+=`<rect x="${P.l}" y="${P.t}" width="${cw}" height="${ch}" fill="#090e1a" rx="3"/>`;
-  s+=`<rect x="${P.l}" y="${ty(70).toFixed(1)}" width="${cw}" height="${(ty(100)-ty(70)).toFixed(1)}" fill="rgba(239,68,68,0.07)"/>`;
-  s+=`<rect x="${P.l}" y="${ty(30).toFixed(1)}" width="${cw}" height="${(ty(0)-ty(30)).toFixed(1)}" fill="rgba(34,197,94,0.07)"/>`;
+  let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
+  s+='<rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#090e1a" rx="3"/>';
+  s+='<rect x="'+P.l+'" y="'+ty(70).toFixed(1)+'" width="'+cw+'" height="'+(ty(100)-ty(70)).toFixed(1)+'" fill="rgba(239,68,68,0.07)"/>';
+  s+='<rect x="'+P.l+'" y="'+ty(30).toFixed(1)+'" width="'+cw+'" height="'+(ty(0)-ty(30)).toFixed(1)+'" fill="rgba(34,197,94,0.07)"/>';
   [[70,'#ef4444'],[50,'#2d4156'],[30,'#22c55e']].forEach(([v,col])=>{const y=ty(v).toFixed(1);
-    s+=`<line x1="${P.l}" x2="${P.l+cw}" y1="${y}" y2="${y}" stroke="${col}" stroke-width="1" ${v!==50?'stroke-dasharray="3 3"':''}/>`;
-    s+=`<text x="${P.l+cw+4}" y="${(ty(v)+4).toFixed(1)}" fill="${col}" font-size="8" font-family="monospace">${v}</text>`;});
-  const rp=lp(sub.map(d=>d.rsi),tx,ty);if(rp)s+=`<path d="${rp}" fill="none" stroke="#a78bfa" stroke-width="1.5"/>`;
+    s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="1" '+(v!==50?'stroke-dasharray="3 3"':'')+'/>';
+    s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(v)+4).toFixed(1)+'" fill="'+col+'" font-size="8" font-family="monospace">'+v+'</text>';});
+  const rp=lp(sub.map(d=>d.rsi),tx,ty);if(rp)s+='<path d="'+rp+'" fill="none" stroke="#a78bfa" stroke-width="1.5"/>';
   return s+'</svg>';}
+
+/* ══ SIDEBAR ════════════════════════════════════════════ */
+async function fetchTop100(){
+  sbLoading=true;renderSidebar();
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h');
+    if(!r.ok)throw new Error('rate limit');
+    const d=await r.json();
+    top100=d.filter(c=>!STABLES.has(c.symbol.toUpperCase())).map((c,idx)=>({
+      rank:c.market_cap_rank||idx+1,symbol:c.symbol.toUpperCase(),
+      name:c.name,price:c.current_price||0,change24h:c.price_change_percentage_24h||0
+    }));
+  }catch(e){top100=FALLBACK;}
+  sbLoading=false;renderSidebar();
+}
+
+function toggleFav(sym,e){
+  if(e)e.stopPropagation();
+  favs=favs.includes(sym)?favs.filter(f=>f!==sym):[...favs,sym];
+  localStorage.setItem('kl_favs',JSON.stringify(favs));
+  renderSidebar();renderHdr();
+}
+
+function setSideTab(t){sideTab=t;renderSidebar();}
+
+function renderSidebar(){
+  const allBtn=document.getElementById('sb-all'),favBtn=document.getElementById('sb-fav');
+  if(allBtn)allBtn.className='sb-tab'+(sideTab==='all'?' on':'');
+  if(favBtn)favBtn.className='sb-tab'+(sideTab==='fav'?' on':'');
+  if(sbLoading){
+    document.getElementById('coin-list').innerHTML='<div style="text-align:center;padding:24px 10px;color:#2d4156"><div style="font-size:18px;margin-bottom:8px">⟳</div><div style="font-size:10px">載入 Top 100…</div></div>';
+    return;}
+  const fv=(document.getElementById('sb-filter')?.value||'').trim().toUpperCase();
+  // Build display list
+  let baseList=sideTab==='fav'
+    ?[...top100.filter(c=>favs.includes(c.symbol)),
+       ...favs.filter(s=>!top100.some(c=>c.symbol===s)).map(s=>({rank:'★',symbol:s,name:s,price:0,change24h:0}))]
+    :top100;
+  if(fv)baseList=baseList.filter(c=>c.symbol.includes(fv)||(c.name||'').toUpperCase().includes(fv));
+  if(!baseList.length){
+    const msg=sideTab==='fav'?'點擊 ☆ 加入最愛':'查無符合幣種';
+    document.getElementById('coin-list').innerHTML='<div style="text-align:center;padding:24px 10px;color:#2d4156;font-size:10px">'+msg+'</div>';
+    return;}
+  document.getElementById('coin-list').innerHTML=baseList.map(c=>{
+    const isFav=favs.includes(c.symbol),isActive=c.symbol===S.coin;
+    const col=c.change24h>=0?'#22c55e':'#ef4444',sign=c.change24h>=0?'+':'';
+    const chgStr=c.change24h!==0?sign+c.change24h.toFixed(1)+'%':'—';
+    return '<div class="ci'+(isActive?' active':'')+'" onclick="pickCoin(\''+c.symbol+'\')">'
+      +'<span class="ci-rank">'+c.rank+'</span>'
+      +'<div class="ci-mid">'
+        +'<span class="ci-sym">'+c.symbol+'</span>'
+        +(c.price?'<span class="ci-price">'+fpS(c.price)+'</span>':'')
+      +'</div>'
+      +'<span class="ci-chg" style="color:'+col+'">'+chgStr+'</span>'
+      +'<span class="ci-star'+(isFav?' on':'')+'" onclick="toggleFav(\''+c.symbol+'\',event)">'+(isFav?'★':'☆')+'</span>'
+      +'</div>';
+  }).join('');}
 
 /* ══ DISPLAY & RENDER ═══════════════════════════════════ */
 let chartW=640,resizeT=null;
@@ -457,137 +532,131 @@ function renderAll(){
   if(el)chartW=Math.max(280,el.getBoundingClientRect().width-14);
   renderHdr();renderErr();renderLoad();
   if(!S.loading){renderCharts();renderPanel();}
+  renderSidebar();
 }
 
 function renderHdr(){
   document.getElementById('ex-btns').innerHTML=Object.entries(EX).map(([k,v])=>
-    `<button onclick="setEx('${k}')" style="border:1px solid ${S.ex===k?v.color:'#162233'};background:${S.ex===k?v.color+'22':'transparent'};color:${S.ex===k?v.color:'#5a7394'}">${v.label}</button>`
+    '<button onclick="setEx(\''+k+'\')" style="border:1px solid '+(S.ex===k?v.color:'#162233')+';background:'+(S.ex===k?v.color+'22':'transparent')+';color:'+(S.ex===k?v.color:'#5a7394')+'">'+v.label+'</button>'
   ).join('');
   document.getElementById('coin-btns').innerHTML=QUICK.map(c=>
-    `<button onclick="pickCoin('${c}')" style="border:1px solid ${S.coin===c?'#1d4ed8':'#162233'};background:${S.coin===c?'#1d4ed8':'transparent'};color:${S.coin===c?'#fff':'#5a7394'}">${c}</button>`
+    '<button onclick="pickCoin(\''+c+'\')" style="border:1px solid '+(S.coin===c?'#1d4ed8':'#162233')+';background:'+(S.coin===c?'#1d4ed8':'transparent')+';color:'+(S.coin===c?'#fff':'#5a7394')+'">'+c+'</button>'
   ).join('');
   document.getElementById('tf-btns').innerHTML=TFS.map(t=>
-    `<button onclick="setTF('${t}')" style="border:1px solid ${S.tf===t?'#f59e0b':'#162233'};background:${S.tf===t?'#f59e0b22':'transparent'};color:${S.tf===t?'#f59e0b':'#5a7394'}">${t}</button>`
+    '<button onclick="setTF(\''+t+'\')" style="border:1px solid '+(S.tf===t?'#f59e0b':'#162233')+';background:'+(S.tf===t?'#f59e0b22':'transparent')+';color:'+(S.tf===t?'#f59e0b':'#5a7394')+'">'+t+'</button>'
   ).join('');
-  if(!QUICK.includes(S.coin)){
-    document.getElementById('srch').value=S.coin;
-    document.getElementById('srch-clear').style.display='block';}
+  if(!QUICK.includes(S.coin)){document.getElementById('srch').value=S.coin;document.getElementById('srch-clear').style.display='block';}
   const px=S.cl[S.cl.length-1]||0,r=S.rsi[S.rsi.length-1];
   const ml=S.macd.line[S.macd.line.length-1],ms=S.macd.sig[S.macd.sig.length-1];
   const m2=S.ma200[S.ma200.length-1],abv=m2!=null&&px>m2;
+  const isFav=favs.includes(S.coin);
   document.getElementById('refresh').textContent=S.loading?'⟳ 載入中':'⟳ 刷新';
-  document.getElementById('stats-bar').innerHTML=`
-    <span style="color:${EX[S.ex].color};font-weight:bold">${EX[S.ex].sym(S.coin)}</span>
-    <span style="color:var(--dim)">現價<span style="color:var(--text);margin-left:4px">${fp(px)}</span></span>
-    <span style="color:var(--dim)">RSI<span style="color:${r<30?'#22c55e':r>70?'#ef4444':'#5a7394'};margin-left:4px">${r?.toFixed(1)||'-'}</span></span>
-    <span style="color:var(--dim)">MACD<span style="color:${ml>ms?'#22c55e':'#ef4444'};margin-left:4px">${ml==null?'…':ml>ms?'多頭↑':'空頭↓'}</span></span>
-    <span style="color:var(--dim)">MA200<span style="color:${m2?abv?'#22c55e':'#ef4444':'#2d4156'};margin-left:4px">${m2?abv?'站上↑':'跌破↓':'N/A'}</span></span>
-    ${S.updated?`<span style="color:#2d4156;margin-left:auto">${S.updated}</span>`:''}
-    <span style="color:#1a2e45;font-size:9px;margin-left:auto">按 / 快速搜尋</span>`;}
+  document.getElementById('stats-bar').innerHTML=
+    '<span style="color:'+EX[S.ex].color+';font-weight:bold">'+EX[S.ex].sym(S.coin)+'</span>'
+    +'<span onclick="toggleFav(\''+S.coin+'\',event)" title="'+(isFav?'移除最愛':'加入最愛')+'" style="cursor:pointer;color:'+(isFav?'#f59e0b':'#2d4156')+';font-size:15px;margin-left:-4px">'+(isFav?'★':'☆')+'</span>'
+    +'<span style="color:var(--dim)">現價<span style="color:var(--text);margin-left:4px">'+fp(px)+'</span></span>'
+    +'<span style="color:var(--dim)">RSI<span style="color:'+(r<30?'#22c55e':r>70?'#ef4444':'#5a7394')+';margin-left:4px">'+(r!=null?r.toFixed(1):'-')+'</span></span>'
+    +'<span style="color:var(--dim)">MACD<span style="color:'+(ml>ms?'#22c55e':'#ef4444')+';margin-left:4px">'+(ml==null?'…':ml>ms?'多頭↑':'空頭↓')+'</span></span>'
+    +'<span style="color:var(--dim)">MA200<span style="color:'+(m2?abv?'#22c55e':'#ef4444':'#2d4156')+';margin-left:4px">'+(m2?abv?'站上↑':'跌破↓':'N/A')+'</span></span>'
+    +(S.updated?'<span style="color:#2d4156;margin-left:auto">'+S.updated+'</span>':'')
+    +'<span style="color:#1a2e45;font-size:9px;margin-left:auto">/ 快速搜尋</span>';}
 
 function renderErr(){
   const el=document.getElementById('err');
-  if(S.error){
-    el.style.display='flex';
-    el.innerHTML=`<span style="color:#ef4444;font-size:12px">⚠ ${S.error}</span>
-      <button onclick="S.error=null;S.coin='BTC';fetchData()" style="border:1px solid #ef4444;background:transparent;color:#ef4444;white-space:nowrap">← 回到 BTC</button>`;
-  } else el.style.display='none';}
+  if(S.error){el.style.display='flex';
+    el.innerHTML='<span style="color:#ef4444;font-size:11px">&#9888; '+S.error+'</span>'
+      +'<button onclick="S.error=null;S.coin=\'BTC\';fetchData()" style="border:1px solid #ef4444;background:transparent;color:#ef4444;white-space:nowrap;flex-shrink:0">&#8592; 回到 BTC</button>';}
+  else el.style.display='none';}
 
 function renderLoad(){
   const el=document.getElementById('loading'),mn=document.getElementById('main');
   if(S.loading&&!S.data.length){el.style.display='flex';mn.style.display='none';
-    document.getElementById('load-msg').textContent=`正在從 ${EX[S.ex].label} 載入 ${EX[S.ex].sym(S.coin)} ${S.tf}…`;}
+    document.getElementById('load-msg').textContent='正在從 '+EX[S.ex].label+' 載入 '+EX[S.ex].sym(S.coin)+' '+S.tf+'…';}
   else{el.style.display='none';mn.style.display='flex';}}
 
 function renderCharts(){
   if(!S.data.length){
-    document.getElementById('chart-content').innerHTML=`
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:14px;color:#2d4156">
-        <div style="font-size:36px">📊</div>
-        <div style="font-size:14px;color:#3d5470">尚無資料</div>
-        <div style="font-size:11px;text-align:center;line-height:1.8;color:#2d4156">
-          請從上方選擇交易所與幣種<br>
-          或在搜尋框輸入加密幣代號（例如 BTC、PEPE、WIF）<br>
-          <span style="color:#ef4444">注意：本工具僅支援加密貨幣，不支援股票代號</span>
-        </div>
-        <button onclick="fetchData()" style="margin-top:8px;padding:6px 20px;border:1px solid #3d5470;border-radius:4px;background:transparent;color:#5a7394;cursor:pointer">⟳ 重新載入 BTC</button>
-      </div>`;
-    return;
-  }
+    document.getElementById('chart-content').innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:14px;color:#2d4156">'
+      +'<div style="font-size:36px">📊</div>'
+      +'<div style="font-size:14px;color:#3d5470">尚無資料</div>'
+      +'<div style="font-size:11px;text-align:center;line-height:1.8;color:#2d4156">'
+        +'請從左側選擇幣種，或在搜尋框輸入加密幣代號<br>'
+        +'<span style="color:#ef4444">注意：本工具僅支援加密貨幣，不支援股票代號</span>'
+      +'</div>'
+      +'<button onclick="fetchData()" style="margin-top:8px;padding:6px 20px;border:1px solid #3d5470;border-radius:4px;background:transparent;color:#5a7394;cursor:pointer">⟳ 重新載入 BTC</button>'
+      +'</div>';return;}
   const{candles,ma200,ma50,bb,sigs,sub}=getDisp();
-  const tabBar=`<div style="display:flex;gap:5px;margin-bottom:6px;align-items:center">
-    <button class="tab-btn${S.tab==='chart'?' on':''}" onclick="setTab('chart')">📈 圖表分析</button>
-    <button class="tab-btn${S.tab==='backtest'?' on':''}" onclick="setTab('backtest')">📋 回測報告</button>
-    <span style="margin-left:auto;font-size:10px;color:#2d4156">${S.data.length}根K棒 · 最近${candles.length}根</span>
-  </div>`;
+  const tabBar='<div style="display:flex;gap:5px;margin-bottom:6px;align-items:center">'
+    +'<button class="tab-btn'+(S.tab==='chart'?' on':'')+'" onclick="setTab(\'chart\')">📈 圖表分析</button>'
+    +'<button class="tab-btn'+(S.tab==='backtest'?' on':'')+'" onclick="setTab(\'backtest\')">📋 回測報告</button>'
+    +'<span style="margin-left:auto;font-size:10px;color:#2d4156">'+S.data.length+'根K棒 · 最近'+candles.length+'根</span>'
+    +'</div>';
   let html=tabBar;
   if(S.tab==='chart'){
-    html+=`<div style="display:flex;gap:10px;margin-bottom:4px;font-size:10px;color:#2d4156;flex-wrap:wrap">
-      <span style="color:#f59e0b">── MA200</span><span style="color:#38bdf8">-- MA50</span>
-      <span style="color:#60a5fa">-- BB(20,2)</span><span style="color:#6366f1">── BB中軌</span>
-      <span style="color:#9333ea">-- POC</span><span style="color:#f59e0b">▲ 形態信號</span>
-    </div>
-    <div style="background:#090e1a;border-radius:7px;margin-bottom:5px;padding:5px 0 2px">${svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,300)}</div>
-    <div class="cbox"><div class="clbl">成交量 Volume</div>${svgVol(sub,chartW,58)}</div>
-    <div class="cbox"><div class="clbl">MACD(12,26,9) <span style="color:#60a5fa">── MACD</span><span style="color:#f97316">── Signal</span></div>${svgMACD(sub,chartW,90)}</div>
-    <div class="cbox"><div class="clbl">RSI(14) <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>${svgRSI(sub,chartW,90)}</div>`;
-  } else {
+    html+='<div style="display:flex;gap:10px;margin-bottom:4px;font-size:10px;color:#2d4156;flex-wrap:wrap">'
+      +'<span style="color:#f59e0b">── MA200</span><span style="color:#38bdf8">-- MA50</span>'
+      +'<span style="color:#60a5fa">-- BB(20,2)</span><span style="color:#6366f1">── BB中軌</span>'
+      +'<span style="color:#9333ea">-- POC</span><span style="color:#f59e0b">▲ 形態信號</span>'
+      +'</div>'
+      +'<div style="background:#090e1a;border-radius:7px;margin-bottom:5px;padding:5px 0 2px">'+svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,300)+'</div>'
+      +'<div class="cbox"><div class="clbl">成交量 Volume</div>'+svgVol(sub,chartW,58)+'</div>'
+      +'<div class="cbox"><div class="clbl">MACD(12,26,9) <span style="color:#60a5fa">── MACD</span><span style="color:#f97316">── Signal</span></div>'+svgMACD(sub,chartW,90)+'</div>'
+      +'<div class="cbox"><div class="clbl">RSI(14) <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>'+svgRSI(sub,chartW,90)+'</div>';
+  }else{
     const{wins,tot,wr,avgW,avgL,byP}=bStats();
-    html+=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px">
-      ${[['總信號數',tot,'#60a5fa'],['歷史勝率',wr+'%',wr>55?'#22c55e':wr>45?'#f59e0b':'#ef4444'],
+    html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px">'
+      +[['總信號數',tot,'#60a5fa'],['歷史勝率',wr+'%',wr>55?'#22c55e':wr>45?'#f59e0b':'#ef4444'],
          ['平均獲利','+'+avgW+'%','#22c55e'],['平均虧損',avgL+'%','#ef4444']].map(([l,v,c])=>
-        `<div style="background:var(--card);border-radius:7px;padding:10px;text-align:center">
-          <div style="font-size:9px;color:var(--dim);margin-bottom:3px">${l}</div>
-          <div style="font-size:22px;font-weight:bold;color:${c}">${v}</div>
-        </div>`).join('')}
-    </div>
-    <div style="background:var(--card);border-radius:7px;padding:9px 12px;margin-bottom:10px">
-      <div style="font-size:9px;color:var(--dim);margin-bottom:5px">整體勝率分佈</div>
-      <div style="display:flex;height:12px;border-radius:3px;overflow:hidden;margin-bottom:5px">
-        <div style="width:${wr}%;background:#22c55e"></div><div style="flex:1;background:#ef4444"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--mid)">
-        <span>🟢 勝 ${wins}次 (${wr}%)</span><span>🔴 敗 ${tot-wins}次 (${(100-wr).toFixed(1)}%)</span>
-      </div>
-    </div>
-    <div style="font-size:10px;color:var(--mid);margin-bottom:6px">各形態歷史勝率</div>
-    ${Object.entries(byP).map(([pat,d])=>`
-      <div style="background:var(--card);border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">
-        <div style="flex:1;font-size:11px">${pat}</div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:9px;color:var(--dim)">${d.t}次</span>
-          <div style="width:70px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden">
-            <div style="width:${(d.w/d.t*100).toFixed(0)}%;height:100%;background:${d.w/d.t>0.5?'#22c55e':'#ef4444'}"></div>
-          </div>
-          <span style="font-size:12px;font-weight:bold;color:${d.w/d.t>0.5?'#22c55e':'#ef4444'};min-width:32px">${(d.w/d.t*100).toFixed(0)}%</span>
-        </div>
-      </div>`).join('')}
-    <div style="font-size:10px;color:var(--mid);margin:10px 0 5px">交易記錄 (最新優先)</div>
-    <div style="max-height:340px;overflow-y:auto">
-      ${S.btR.slice().reverse().map(r=>`
-        <div style="background:var(--card);border-radius:5px;padding:7px 9px;margin-bottom:4px;border-left:3px solid ${r.result==='WIN'?'#22c55e':'#ef4444'};display:flex;justify-content:space-between;align-items:center">
-          <div><span style="font-size:9px;color:var(--dim)">${r.date} </span><span style="font-size:10px">${r.pattern}</span>
-            <div style="font-size:9px;color:var(--dim);margin-top:1px">進:${fp(r.entry)} → 出:${fp(r.exit)}</div></div>
-          <div style="text-align:right">
-            <div style="font-size:11px;font-weight:bold;color:${r.result==='WIN'?'#22c55e':'#ef4444'}">${r.pnl>0?'+':''}${r.pnl}%</div>
-            <div style="font-size:9px;color:var(--dim)">${r.bars}根K棒</div>
-          </div>
-        </div>`).join('')}
-    </div>`;}
+        '<div style="background:var(--card);border-radius:7px;padding:10px;text-align:center">'
+          +'<div style="font-size:9px;color:var(--dim);margin-bottom:3px">'+l+'</div>'
+          +'<div style="font-size:22px;font-weight:bold;color:'+c+'">'+v+'</div>'
+        +'</div>').join('')+'</div>'
+      +'<div style="background:var(--card);border-radius:7px;padding:9px 12px;margin-bottom:10px">'
+        +'<div style="font-size:9px;color:var(--dim);margin-bottom:5px">整體勝率分佈</div>'
+        +'<div style="display:flex;height:12px;border-radius:3px;overflow:hidden;margin-bottom:5px">'
+          +'<div style="width:'+wr+'%;background:#22c55e"></div><div style="flex:1;background:#ef4444"></div>'
+        +'</div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--mid)">'
+          +'<span>&#x1f7e2; 勝 '+wins+'次 ('+wr+'%)</span><span>&#x1f534; 敗 '+(tot-wins)+'次 ('+(100-wr).toFixed(1)+'%)</span>'
+        +'</div>'
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--mid);margin-bottom:6px">各形態歷史勝率</div>'
+      +Object.entries(byP).map(([pat,d])=>
+        '<div style="background:var(--card);border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">'
+          +'<div style="flex:1;font-size:11px">'+pat+'</div>'
+          +'<div style="display:flex;align-items:center;gap:8px">'
+            +'<span style="font-size:9px;color:var(--dim)">'+d.t+'次</span>'
+            +'<div style="width:70px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden">'
+              +'<div style="width:'+(d.w/d.t*100).toFixed(0)+'%;height:100%;background:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+'"></div>'
+            +'</div>'
+            +'<span style="font-size:12px;font-weight:bold;color:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+';min-width:32px">'+(d.w/d.t*100).toFixed(0)+'%</span>'
+          +'</div>'
+        +'</div>').join('')
+      +'<div style="font-size:10px;color:var(--mid);margin:10px 0 5px">交易記錄 (最新優先)</div>'
+      +'<div style="max-height:340px;overflow-y:auto">'
+      +S.btR.slice().reverse().map(r=>
+        '<div style="background:var(--card);border-radius:5px;padding:7px 9px;margin-bottom:4px;border-left:3px solid '+(r.result==='WIN'?'#22c55e':'#ef4444')+';display:flex;justify-content:space-between;align-items:center">'
+          +'<div><span style="font-size:9px;color:var(--dim)">'+r.date+' </span><span style="font-size:10px">'+r.pattern+'</span>'
+            +'<div style="font-size:9px;color:var(--dim);margin-top:1px">進:'+fp(r.entry)+' → 出:'+fp(r.exit)+'</div></div>'
+          +'<div style="text-align:right">'
+            +'<div style="font-size:11px;font-weight:bold;color:'+(r.result==='WIN'?'#22c55e':'#ef4444')+'">'+(r.pnl>0?'+':'')+r.pnl+'%</div>'
+            +'<div style="font-size:9px;color:var(--dim)">'+r.bars+'根K棒</div>'
+          +'</div>'
+        +'</div>').join('')
+      +'</div>';}
   document.getElementById('chart-content').innerHTML=html;}
 
 function renderPanel(){
   if(!S.data.length){
-    document.getElementById('panel-content').innerHTML=`<div style="color:#2d4156;font-size:11px;text-align:center;padding:30px 10px">等待資料載入…</div>`;
-    return;
-  }
+    document.getElementById('panel-content').innerHTML='<div style="color:#2d4156;font-size:11px;text-align:center;padding:30px 10px">等待資料載入…</div>';
+    return;}
   const px=S.cl[S.cl.length-1]||0,r=S.rsi[S.rsi.length-1];
   const ml=S.macd.line[S.macd.line.length-1],ms=S.macd.sig[S.macd.sig.length-1];
   const m2=S.ma200[S.ma200.length-1],abv=m2!=null&&px>m2;
   const bbu=S.bb.up[S.bb.up.length-1],bbl=S.bb.lo[S.bb.lo.length-1];
   const m5=S.ma50[S.ma50.length-1];
   const rows=[
-    {l:'RSI(14)',v:r?.toFixed(1),s:r==null?'N/A':r<30?'超賣🟢':r>70?'超買🔴':'中性',c:r<30?'#22c55e':r>70?'#ef4444':'#5a7394'},
+    {l:'RSI(14)',v:r!=null?r.toFixed(1):null,s:r==null?'N/A':r<30?'超賣🟢':r>70?'超買🔴':'中性',c:r<30?'#22c55e':r>70?'#ef4444':'#5a7394'},
     {l:'MACD訊號',v:null,s:ml==null?'計算中':ml>ms?'黃金交叉↑':'死亡交叉↓',c:ml>ms?'#22c55e':'#ef4444'},
     {l:'MA200',v:m2?fp(m2):'資料不足',s:m2?abv?'站上(多)':'跌破(空)':'—',c:abv?'#22c55e':m2?'#ef4444':'#2d4156'},
     {l:'MA50',v:m5?fp(m5):'—',s:m5?px>m5?'站上':'跌破':'N/A',c:m5&&px>m5?'#22c55e':'#ef4444'},
@@ -596,50 +665,49 @@ function renderPanel(){
     {l:'POC',v:S.poc?fp(S.poc):'—',s:S.poc?px>S.poc?'高於POC':'低於POC':'—',c:S.poc&&px>S.poc?'#22c55e':'#ef4444'},
   ];
   const last=S.sigs[S.sigs.length-1];const{byP}=bStats();
-  let html=`<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 當前指標狀態</div>
-  ${rows.map(x=>`<div class="prow">
-    <span style="font-size:10px;color:var(--dim)">${x.l}</span>
-    <div style="text-align:right">${x.v?`<span style="font-size:9px;color:var(--mid);margin-right:4px">${x.v}</span>`:''}<span style="font-size:10px;color:${x.c}">${x.s}</span></div>
-  </div>`).join('')}`;
+  let html='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 當前指標狀態</div>'
+    +rows.map(x=>'<div class="prow">'
+      +'<span style="font-size:10px;color:var(--dim)">'+x.l+'</span>'
+      +'<div style="text-align:right">'+(x.v?'<span style="font-size:9px;color:var(--mid);margin-right:4px">'+x.v+'</span>':'')+'<span style="font-size:10px;color:'+x.c+'">'+x.s+'</span></div>'
+    +'</div>').join('');
   if(last){const bp=byP[last.pattern];
-    html+=`<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin:13px 0 7px">▸ 最新形態信號</div>
-    <div style="background:#091525;border-radius:8px;border:1px solid #1a3a5f;padding:10px">
-      <div style="font-size:13px;font-weight:bold;margin-bottom:3px">${last.pattern}</div>
-      <div style="font-size:9px;color:var(--dim);margin-bottom:7px">${last.date} · 強度 ${last.str}/${last.maxStr}</div>
-      <div style="background:var(--bd);border-radius:2px;height:4px;margin-bottom:9px">
-        <div style="width:${(last.str/last.maxStr*100).toFixed(0)}%;height:100%;border-radius:2px;background:${last.str/last.maxStr>0.7?'#22c55e':last.str/last.maxStr>0.5?'#f59e0b':'#ef4444'}"></div>
-      </div>
-      <div style="margin-bottom:10px">${last.conds.map(c=>`<div style="font-size:10px;color:#22c55e;padding:1.5px 0">✓ ${c}</div>`).join('')}</div>
-      <div style="background:#0a1424;border-radius:6px;padding:9px">
-        ${[['進場價格',fp(last.entry),'#60a5fa',''],['止盈目標 TP',fp(last.tp),'#22c55e','+'+last.tpPct+'%'],
-           ['止損位置 SL',fp(last.sl),'#ef4444','-'+last.slPct+'%']].map(([l,v,c,tag])=>
-          `<div style="display:flex;justify-content:space-between;padding:4px 0">
-            <span style="font-size:9px;color:var(--dim)">${l}</span>
-            <span style="font-size:12px;font-weight:bold;color:${c}">${v}${tag?` <span style="font-size:9px;opacity:.7">${tag}</span>`:''}</span>
-          </div>`).join('')}
-        <div style="border-top:1px solid var(--bd);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between">
-          <span style="font-size:9px;color:var(--dim)">風報比 R:R</span>
-          <span style="font-size:12px;color:#f59e0b;font-weight:bold">1:${(last.tpPct/last.slPct).toFixed(1)}</span>
-        </div>
-      </div>
-      ${bp?`<div style="margin-top:8px;background:#0a1424;border-radius:6px;padding:8px;text-align:center">
-        <div style="font-size:9px;color:var(--dim);margin-bottom:2px">此形態歷史勝率</div>
-        <div style="font-size:24px;font-weight:bold;color:${bp.w/bp.t>0.5?'#22c55e':'#ef4444'}">${(bp.w/bp.t*100).toFixed(0)}%</div>
-        <div style="font-size:9px;color:#2d4156">${bp.w}/${bp.t} 次達標</div>
-      </div>`:''}
-    </div>`;}
-  html+=`<div style="margin:12px 0 6px;font-size:9px;color:#2d4156">▸ 歷史信號 (${S.sigs.length})</div>
-  ${S.sigs.slice().reverse().slice(0,8).map(s=>{
-    const bt=S.btR.find(r=>r.index===s.index);
-    const col=bt?.result==='WIN'?'#22c55e':bt?.result==='LOSS'?'#ef4444':'#2d4156';
-    return`<div style="background:var(--bg);border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid ${col}">
-      <div style="display:flex;justify-content:space-between">
-        <span style="font-size:9px;color:var(--dim)">${s.date} ${s.pattern}</span>
-        ${bt?`<span style="font-size:10px;font-weight:bold;color:${col}">${bt.pnl>0?'+':''}${bt.pnl}%</span>`:''}
-      </div>
-      <div style="font-size:9px;color:#2d4156;margin-top:1px">進:${fp(s.entry)} 盈:${fp(s.tp)} 損:${fp(s.sl)}</div>
-    </div>`;}).join('')}
-  ${!S.sigs.length&&S.data.length?'<div style="font-size:10px;color:#2d4156;text-align:center;padding:20px 0">目前無滿足條件的形態信號</div>':''}`;
+    html+='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin:13px 0 7px">▸ 最新形態信號</div>'
+      +'<div style="background:#091525;border-radius:8px;border:1px solid #1a3a5f;padding:10px">'
+        +'<div style="font-size:13px;font-weight:bold;margin-bottom:3px">'+last.pattern+'</div>'
+        +'<div style="font-size:9px;color:var(--dim);margin-bottom:7px">'+last.date+' · 強度 '+last.str+'/'+last.maxStr+'</div>'
+        +'<div style="background:var(--bd);border-radius:2px;height:4px;margin-bottom:9px">'
+          +'<div style="width:'+(last.str/last.maxStr*100).toFixed(0)+'%;height:100%;border-radius:2px;background:'+(last.str/last.maxStr>0.7?'#22c55e':last.str/last.maxStr>0.5?'#f59e0b':'#ef4444')+'"></div>'
+        +'</div>'
+        +'<div style="margin-bottom:10px">'+last.conds.map(c=>'<div style="font-size:10px;color:#22c55e;padding:1.5px 0">✓ '+c+'</div>').join('')+'</div>'
+        +'<div style="background:#0a1424;border-radius:6px;padding:9px">'
+          +[['進場價格',fp(last.entry),'#60a5fa',''],['止盈目標 TP',fp(last.tp),'#22c55e','+'+last.tpPct+'%'],['止損位置 SL',fp(last.sl),'#ef4444','-'+last.slPct+'%']].map(([l,v,c,tag])=>
+            '<div style="display:flex;justify-content:space-between;padding:4px 0">'
+              +'<span style="font-size:9px;color:var(--dim)">'+l+'</span>'
+              +'<span style="font-size:12px;font-weight:bold;color:'+c+'">'+v+(tag?' <span style="font-size:9px;opacity:.7">'+tag+'</span>':'')+'</span>'
+            +'</div>').join('')
+          +'<div style="border-top:1px solid var(--bd);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between">'
+            +'<span style="font-size:9px;color:var(--dim)">風報比 R:R</span>'
+            +'<span style="font-size:12px;color:#f59e0b;font-weight:bold">1:'+(last.tpPct/last.slPct).toFixed(1)+'</span>'
+          +'</div>'
+        +'</div>'
+        +(bp?'<div style="margin-top:8px;background:#0a1424;border-radius:6px;padding:8px;text-align:center">'
+            +'<div style="font-size:9px;color:var(--dim);margin-bottom:2px">此形態歷史勝率</div>'
+            +'<div style="font-size:24px;font-weight:bold;color:'+(bp.w/bp.t>0.5?'#22c55e':'#ef4444')+'">'+(bp.w/bp.t*100).toFixed(0)+'%</div>'
+            +'<div style="font-size:9px;color:#2d4156">'+bp.w+'/'+bp.t+' 次達標</div>'
+          +'</div>':'')
+      +'</div>';}
+  html+='<div style="margin:12px 0 6px;font-size:9px;color:#2d4156">▸ 歷史信號 ('+S.sigs.length+')</div>'
+    +S.sigs.slice().reverse().slice(0,8).map(s=>{
+      const bt=S.btR.find(r=>r.index===s.index);
+      const col=bt?.result==='WIN'?'#22c55e':bt?.result==='LOSS'?'#ef4444':'#2d4156';
+      return'<div style="background:var(--bg);border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid '+col+'">'
+        +'<div style="display:flex;justify-content:space-between">'
+          +'<span style="font-size:9px;color:var(--dim)">'+s.date+' '+s.pattern+'</span>'
+          +(bt?'<span style="font-size:10px;font-weight:bold;color:'+col+'">'+(bt.pnl>0?'+':'')+bt.pnl+'%</span>':'')
+        +'</div>'
+        +'<div style="font-size:9px;color:#2d4156;margin-top:1px">進:'+fp(s.entry)+' 盈:'+fp(s.tp)+' 損:'+fp(s.sl)+'</div>'
+      +'</div>';}).join('')
+    +(!S.sigs.length&&S.data.length?'<div style="font-size:10px;color:#2d4156;text-align:center;padding:20px 0">目前無滿足條件的形態信號</div>':'');
   document.getElementById('panel-content').innerHTML=html;}
 
 /* ══ FETCH & ACTIONS ════════════════════════════════════ */
@@ -652,25 +720,19 @@ async function fetchData(){
     S.data=data;compute();S.updated=new Date().toLocaleTimeString();
   }catch(e){
     const msg=e.message||'載入失敗';
-    // Check if it's likely a bad symbol (stocks, typo, etc.)
-    if(msg.includes('400')||msg.includes('Invalid')||msg.includes('symbol')||msg.includes('not exist')){
-      S.error=`找不到 ${EX[S.ex].sym(S.coin)} ── 請確認是加密貨幣代號（如 BTC、ETH），股票代號不適用`;
-    } else {
-      S.error=msg;
-    }
-  }
-  finally{S.loading=false;renderAll();}
+    S.error=(msg.includes('400')||msg.includes('HTTP 4'))?
+      '找不到 '+EX[S.ex].sym(S.coin)+' ── 請確認是加密幣代號（如 BTC、PEPE），股票不適用':msg;
+  }finally{S.loading=false;renderAll();}
 }
 function setEx(k){S.ex=k;fetchData();}
 function setTF(t){S.tf=t;fetchData();}
 function setTab(t){S.tab=t;renderCharts();}
 window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(()=>renderAll(),200);});
-// Render header & empty state immediately (buttons appear before data loads)
-renderHdr();
-renderCharts();
-renderPanel();
-// Then fetch data
+
+// Init
+renderHdr();renderCharts();renderPanel();
 fetchData();
+fetchTop100();
 </script>
 </body>
 </html>
