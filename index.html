@@ -75,7 +75,7 @@ button{cursor:pointer;font-family:'Courier New',monospace;font-size:10px;
 
   <!-- SEARCH -->
   <div id="srch-wrap">
-    <input id="srch" type="text" placeholder="🔍 搜尋幣種 (PEPE...)"
+    <input id="srch" type="text" placeholder="🔍 加密幣代號 (PEPE, WIF...)"
            autocomplete="off" spellcheck="false" maxlength="12"
            oninput="onSrch(this.value)"
            onkeydown="onSrchKey(event)"
@@ -456,7 +456,7 @@ function renderAll(){
   const el=document.getElementById('charts');
   if(el)chartW=Math.max(280,el.getBoundingClientRect().width-14);
   renderHdr();renderErr();renderLoad();
-  if(S.data.length&&!S.loading){renderCharts();renderPanel();}
+  if(!S.loading){renderCharts();renderPanel();}
 }
 
 function renderHdr(){
@@ -487,8 +487,11 @@ function renderHdr(){
 
 function renderErr(){
   const el=document.getElementById('err');
-  if(S.error){el.style.display='flex';el.innerHTML=`<span style="color:#ef4444;font-size:11px">⚠ ${S.error}</span><button onclick="fetchData()" style="border:1px solid #ef4444;background:transparent;color:#ef4444">重試</button>`;}
-  else el.style.display='none';}
+  if(S.error){
+    el.style.display='flex';
+    el.innerHTML=`<span style="color:#ef4444;font-size:12px">⚠ ${S.error}</span>
+      <button onclick="S.error=null;S.coin='BTC';fetchData()" style="border:1px solid #ef4444;background:transparent;color:#ef4444;white-space:nowrap">← 回到 BTC</button>`;
+  } else el.style.display='none';}
 
 function renderLoad(){
   const el=document.getElementById('loading'),mn=document.getElementById('main');
@@ -497,7 +500,20 @@ function renderLoad(){
   else{el.style.display='none';mn.style.display='flex';}}
 
 function renderCharts(){
-  if(!S.data.length)return;
+  if(!S.data.length){
+    document.getElementById('chart-content').innerHTML=`
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:14px;color:#2d4156">
+        <div style="font-size:36px">📊</div>
+        <div style="font-size:14px;color:#3d5470">尚無資料</div>
+        <div style="font-size:11px;text-align:center;line-height:1.8;color:#2d4156">
+          請從上方選擇交易所與幣種<br>
+          或在搜尋框輸入加密幣代號（例如 BTC、PEPE、WIF）<br>
+          <span style="color:#ef4444">注意：本工具僅支援加密貨幣，不支援股票代號</span>
+        </div>
+        <button onclick="fetchData()" style="margin-top:8px;padding:6px 20px;border:1px solid #3d5470;border-radius:4px;background:transparent;color:#5a7394;cursor:pointer">⟳ 重新載入 BTC</button>
+      </div>`;
+    return;
+  }
   const{candles,ma200,ma50,bb,sigs,sub}=getDisp();
   const tabBar=`<div style="display:flex;gap:5px;margin-bottom:6px;align-items:center">
     <button class="tab-btn${S.tab==='chart'?' on':''}" onclick="setTab('chart')">📈 圖表分析</button>
@@ -561,7 +577,10 @@ function renderCharts(){
   document.getElementById('chart-content').innerHTML=html;}
 
 function renderPanel(){
-  if(!S.data.length)return;
+  if(!S.data.length){
+    document.getElementById('panel-content').innerHTML=`<div style="color:#2d4156;font-size:11px;text-align:center;padding:30px 10px">等待資料載入…</div>`;
+    return;
+  }
   const px=S.cl[S.cl.length-1]||0,r=S.rsi[S.rsi.length-1];
   const ml=S.macd.line[S.macd.line.length-1],ms=S.macd.sig[S.macd.sig.length-1];
   const m2=S.ma200[S.ma200.length-1],abv=m2!=null&&px>m2;
@@ -631,13 +650,26 @@ async function fetchData(){
     const data=await ex.get(sym,S.tf,n);
     if(!data||data.length<30)throw new Error('資料不足，請稍後重試');
     S.data=data;compute();S.updated=new Date().toLocaleTimeString();
-  }catch(e){S.error=e.message||'載入失敗';}
+  }catch(e){
+    const msg=e.message||'載入失敗';
+    // Check if it's likely a bad symbol (stocks, typo, etc.)
+    if(msg.includes('400')||msg.includes('Invalid')||msg.includes('symbol')||msg.includes('not exist')){
+      S.error=`找不到 ${EX[S.ex].sym(S.coin)} ── 請確認是加密貨幣代號（如 BTC、ETH），股票代號不適用`;
+    } else {
+      S.error=msg;
+    }
+  }
   finally{S.loading=false;renderAll();}
 }
 function setEx(k){S.ex=k;fetchData();}
 function setTF(t){S.tf=t;fetchData();}
 function setTab(t){S.tab=t;renderCharts();}
 window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(()=>renderAll(),200);});
+// Render header & empty state immediately (buttons appear before data loads)
+renderHdr();
+renderCharts();
+renderPanel();
+// Then fetch data
 fetchData();
 </script>
 </body>
