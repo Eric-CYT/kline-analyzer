@@ -161,7 +161,7 @@ const EX={
 
 /* ══ STATE ══════════════════════════════════════════════ */
 const S={ex:'binance',coin:'BTC',tf:'1D',range:'recent',data:[],loading:false,error:null,tab:'chart',updated:null,
-  cl:[],vl:[],macd:{line:[],sig:[],hist:[]},rsi:[],ma200:[],ma50:[],bb:{up:[],mid:[],lo:[]},poc:null,sigs:[],btR:[]};
+  cl:[],vl:[],macd:{line:[],sig:[],hist:[]},rsi:[],rsiSlow:[],atrA:[],ma200:[],ma50:[],bb:{up:[],mid:[],lo:[]},poc:null,sigs:[],btR:[]};
 let sideTab='all';
 let top100=[];
 let sbLoading=true;
@@ -265,104 +265,287 @@ const fpS=v=>{if(!v)return'-';const a=Math.abs(v);
   if(a>=10000)return(v/1000).toFixed(0)+'K';if(a>=100)return v.toFixed(0);
   if(a>=1)return v.toFixed(2);if(a>=0.0001)return v.toFixed(4);return v.toExponential(2);};
 
-/* ══ MATH ════════════════════════════════════════════════ */
+/* ══ GLOBAL CONFIG (Optimization #4) ═════════════════════ */
+const CFG = {
+  // ── ATR ──
+  atr_period: 14,        // ATR lookback period
+  atr_sl_mult: 1.5,      // N: stop-loss = entry - N*ATR
+  atr_tp_mult: 3.0,      // M: take-profit = entry + M*ATR
+  atr_trail_mult: 2.0,   // trailing stop distance = T*ATR
+
+  // ── RSI ──
+  rsi_period: 14,
+  rsi_slow_period: 9,     // RSI moving average ("slow line")
+  rsi_oversold: 30,
+  rsi_overbought: 70,
+  rsi_engulf_max: 55,     // max RSI for engulfing pattern
+  rsi_macd_lo: 45,        // MACD golden cross RSI range
+  rsi_macd_hi: 72,
+  rsi_bb_lo: 55,          // BB breakout RSI range
+  rsi_bb_hi: 78,
+
+  // ── Volume ──
+  vol_lookback: 10,       // volume MA lookback
+  vol_surge_mult: 1.4,    // volume surge multiplier
+
+  // ── MA ──
+  ma200_period: 200,
+  ma50_period: 50,
+  ma200_proximity: 0.015, // 1.5% proximity threshold
+
+  // ── Bollinger Bands ──
+  bb_period: 20,
+  bb_mult: 2,
+
+  // ── MACD ──
+  macd_fast: 12,
+  macd_slow: 26,
+  macd_signal: 9,
+
+  // ── POC ──
+  poc_lookback: 60,
+  poc_bins: 50,
+
+  // ── Candlestick thresholds ──
+  hammer_shadow_ratio: 2.5,  // lower shadow >= N * body
+  hammer_wick_ratio: 0.4,    // upper wick < N * body
+  engulf_tolerance: 1.003,   // open <= prev_close * N
+  tws_gap_pct: 0.006,        // three white soldiers gap tolerance
+
+  // ── Signal trigger ──
+  min_signal_score: 4,
+
+  // ── Backtest ──
+  entry_mode: 'next_open',   // 'close' or 'next_open'
+  exit_mode: 'trailing',     // 'fixed_bars' or 'trailing'
+  max_hold_bars: 120,        // safety max hold (for trailing mode)
+  fixed_hold_bars: 30,       // for fixed_bars mode
+};
+
+/* ══ MATH (Upgraded) ════════════════════════════════════ */
 const _ema=(arr,p)=>{const k=2/(p+1);const res=[];let e=null;
   for(let i=0;i<arr.length;i++){if(arr[i]==null){res.push(null);continue;}
     if(e===null){if(i<p-1){res.push(null);continue;}e=arr.slice(i-p+1,i+1).reduce((a,b)=>a+b)/p;}
     else e=arr[i]*k+e*(1-k);res.push(+e.toFixed(8));}return res;};
 const _sma=(arr,p)=>arr.map((_,i)=>i<p-1?null:+(arr.slice(i-p+1,i+1).reduce((a,b)=>a+b)/p).toFixed(6));
-const _macd=cl=>{const l12=_ema(cl,12),l26=_ema(cl,26);
+
+const _macd=cl=>{
+  const l12=_ema(cl,CFG.macd_fast),l26=_ema(cl,CFG.macd_slow);
   const line=l12.map((v,i)=>v!=null&&l26[i]!=null?+(v-l26[i]).toFixed(8):null);
-  const sig=_ema(line.map(v=>v??0),9);
+  const sig=_ema(line.map(v=>v??0),CFG.macd_signal);
   return{line,sig,hist:line.map((v,i)=>v!=null&&sig[i]!=null?+(v-sig[i]).toFixed(8):null)};};
-const _rsi=(cl,p=14)=>cl.map((_,i)=>{if(i<p)return null;let g=0,l=0;
-  for(let j=i-p+1;j<=i;j++){const d=cl[j]-cl[j-1];d>0?g+=d:l-=d;}
-  const ag=g/p,al=l/p;return al===0?100:+(100-100/(1+ag/al)).toFixed(2);});
-const _bb=(cl,p=20,m=2)=>{const mid=_sma(cl,p);const up=[],lo=[];
+
+// ── Optimization #2: RSI + RSI slow line ──
+const _rsi=(cl,p)=>{
+  p=p||CFG.rsi_period;
+  return cl.map((_,i)=>{if(i<p)return null;let g=0,l=0;
+    for(let j=i-p+1;j<=i;j++){const d=cl[j]-cl[j-1];d>0?g+=d:l-=d;}
+    const ag=g/p,al=l/p;return al===0?100:+(100-100/(1+ag/al)).toFixed(2);});};
+const _rsiSlow=(rsiArr)=>_sma(rsiArr.map(v=>v??50), CFG.rsi_slow_period);
+
+// ── Optimization #1: ATR calculation ──
+const _atr=(D,p)=>{
+  p=p||CFG.atr_period;
+  const tr=D.map((c,i)=>{
+    if(i===0) return c.high-c.low;
+    const prev=D[i-1].close;
+    return Math.max(c.high-c.low, Math.abs(c.high-prev), Math.abs(c.low-prev));
+  });
+  // Use Wilder's smoothing (RMA)
+  const res=[];
+  for(let i=0;i<tr.length;i++){
+    if(i<p-1){res.push(null);continue;}
+    if(i===p-1){res.push(tr.slice(0,p).reduce((a,b)=>a+b)/p);continue;}
+    res.push(+(res[i-1]*(p-1)/p + tr[i]/p).toFixed(8));
+  }
+  return res;
+};
+
+const _bb=(cl,p,m)=>{
+  p=p||CFG.bb_period;m=m||CFG.bb_mult;
+  const mid=_sma(cl,p);const up=[],lo=[];
   cl.forEach((_,i)=>{if(i<p-1){up.push(null);lo.push(null);return;}
     const sl=cl.slice(i-p+1,i+1),mn=mid[i];
     const sd=Math.sqrt(sl.reduce((s,v)=>s+(v-mn)**2,0)/p);
     up.push(+(mn+m*sd).toFixed(6));lo.push(+(mn-m*sd).toFixed(6));});return{up,mid,lo};};
-const _poc=(D,look=60)=>{const rc=D.slice(-look);
+
+const _poc=(D,look)=>{
+  look=look||CFG.poc_lookback;
+  const rc=D.slice(-look);
   const all=rc.flatMap(c=>[c.high,c.low]);const mn=Math.min(...all),mx=Math.max(...all);
-  const step=(mx-mn)/50||0.01;const map={};
+  const step=(mx-mn)/CFG.poc_bins||0.01;const map={};
   rc.forEach(c=>{const lv=Math.max(1,Math.round((c.high-c.low)/step));
     for(let l=0;l<=lv;l++){const p=+(c.low+l*step).toFixed(6);map[p]=(map[p]||0)+c.volume/(lv+1);}});
   let mv=0,poc=mn;Object.entries(map).forEach(([p,v])=>{if(v>mv){mv=v;poc=+p;}});return poc;};
 
-/* ══ SIGNALS ════════════════════════════════════════════ */
+/* ══ SIGNALS (Upgraded: ATR TP/SL + RSI crossover) ══════ */
 function detectSignals(){
-  const{data:D,rsi:rsiA,macd:macdO,ma200:ma200A,bb:bbO,vl:volA}=S;const out=[];
-  for(let i=15;i<D.length-3;i++){
+  const{data:D,rsi:rsiA,rsiSlow:rsiSlowA,macd:macdO,ma200:ma200A,bb:bbO,vl:volA,atrA}=S;
+  const out=[];
+
+  for(let i=Math.max(15,CFG.atr_period);i<D.length-1;i++){
     const c=D[i],p=D[i-1],body=Math.abs(c.close-c.open),bull=c.close>=c.open;
     const lw=Math.min(c.open,c.close)-c.low,uw=c.high-Math.max(c.open,c.close);
-    const av=volA.slice(Math.max(0,i-10),i).reduce((a,b)=>a+b,0)/10||1;
-    const vs=c.volume>av*1.4,a200=ma200A[i]!=null&&c.close>ma200A[i];
-    const n200=ma200A[i]!=null&&Math.abs(c.low-ma200A[i])/ma200A[i]<0.015;
-    const r=rsiA[i],r1=rsiA[i-1];const{line:ml,sig:ms,hist:mh}=macdO;let hit=null;
-    if(bull&&lw>2.5*body&&uw<0.4*body){
-      let s=2;const co=['下影線>=2.5倍實體','看漲收盤'];
-      if(r!=null&&r<35){co.push('RSI超賣('+r.toFixed(0)+')');s+=2;}
+
+    // Volume surge (parameterized)
+    const avVol=volA.slice(Math.max(0,i-CFG.vol_lookback),i).reduce((a,b)=>a+b,0)/CFG.vol_lookback||1;
+    const vs=c.volume>avVol*CFG.vol_surge_mult;
+
+    // MA200 conditions (parameterized proximity)
+    const a200=ma200A[i]!=null&&c.close>ma200A[i];
+    const n200=ma200A[i]!=null&&Math.abs(c.low-ma200A[i])/ma200A[i]<CFG.ma200_proximity;
+
+    // RSI values + crossover check (Optimization #2)
+    const r=rsiA[i],r1=rsiA[i-1];
+    const rSlow=rsiSlowA[i],rSlowPrev=rsiSlowA[i-1];
+    const rsiAboveSlow=(r!=null&&rSlow!=null&&r>rSlow);       // RSI fast > slow
+    const rsiCrossUp=(r!=null&&rSlow!=null&&r1!=null&&rSlowPrev!=null&&r>rSlow&&r1<=rSlowPrev); // just crossed
+
+    const{line:ml,sig:ms,hist:mh}=macdO;
+    const atr=atrA[i];
+    let hit=null;
+
+    // ─── 🔨 Power Hammer ───
+    if(bull&&lw>CFG.hammer_shadow_ratio*body&&uw<CFG.hammer_wick_ratio*body){
+      let s=2;const co=['下影線>='+CFG.hammer_shadow_ratio+'倍實體','看漲收盤'];
+      if(r!=null&&r<CFG.rsi_oversold+5){
+        if(rsiAboveSlow){co.push('RSI超賣回升('+r.toFixed(0)+') 快>慢線✓');s+=2;}
+        else{co.push('RSI超賣('+r.toFixed(0)+') 未過慢線');s+=1;}
+      }
       if(bbO.lo[i]!=null&&c.low<=bbO.lo[i]){co.push('觸及布林下軌');s++;}
-      if(a200||n200){co.push('MA200支撐位');s++;}if(vs){co.push('成交量放大x1.4');s++;}
-      if(s>=4)hit={n:'🔨 強力錘子線',co,s,ms:7,tp:0.05,sl:0.025};}
-    if(!hit&&bull&&p.close<p.open&&c.open<=p.close*1.003&&c.close>=p.open){
+      if(a200||n200){co.push('MA200支撐位');s++;}
+      if(vs){co.push('成交量放大x'+CFG.vol_surge_mult);s++;}
+      if(s>=CFG.min_signal_score) hit={n:'🔨 強力錘子線',co,s,ms:7};}
+
+    // ─── 🟢 Bullish Engulfing ───
+    if(!hit&&bull&&p.close<p.open&&c.open<=p.close*CFG.engulf_tolerance&&c.close>=p.open){
       let s=2;const co=['看漲吞噬型態'];
-      if(r!=null&&r<55){co.push('RSI('+r.toFixed(0)+')');s++;}
+      if(r!=null&&r<CFG.rsi_engulf_max){
+        if(rsiAboveSlow){co.push('RSI('+r.toFixed(0)+') 快>慢線✓');s+=2;}
+        else{co.push('RSI('+r.toFixed(0)+')');s+=1;}
+      }
       if(mh[i]!=null&&mh[i-1]!=null&&mh[i]>0&&mh[i-1]<0){co.push('MACD柱轉正');s+=2;}
       if(a200){co.push('MA200多方');s++;}if(vs){co.push('成交量確認');s++;}
-      if(s>=4)hit={n:'🟢 看漲吞噬',co,s,ms:7,tp:0.06,sl:0.03};}
+      if(s>=CFG.min_signal_score) hit={n:'🟢 看漲吞噬',co,s,ms:7};}
+
+    // ─── 📈 MACD Golden Cross ───
     if(!hit&&ml[i]!=null&&ms[i]!=null&&ml[i-1]!=null&&ms[i-1]!=null&&ml[i]>ms[i]&&ml[i-1]<=ms[i-1]){
       let s=2;const co=['MACD黃金交叉'];
-      if(r!=null&&r>45&&r<72){co.push('RSI動能('+r.toFixed(0)+')');s+=2;}
+      if(r!=null&&r>CFG.rsi_macd_lo&&r<CFG.rsi_macd_hi){
+        if(rsiAboveSlow){co.push('RSI動能('+r.toFixed(0)+') 快>慢線✓');s+=2;}
+        else{co.push('RSI動能('+r.toFixed(0)+')');s+=1;}
+      }
       if(a200){co.push('MA200多頭趨勢');s+=2;}if(vs){co.push('成交量確認');s++;}
       if(mh[i]!=null&&mh[i-1]!=null&&mh[i]>mh[i-1]){co.push('MACD柱擴張');s++;}
-      if(s>=4)hit={n:'📈 MACD黃金交叉',co,s,ms:8,tp:0.07,sl:0.035};}
+      if(s>=CFG.min_signal_score) hit={n:'📈 MACD黃金交叉',co,s,ms:8};}
+
+    // ─── 🚀 BB Upper Breakout ───
     if(!hit&&bbO.up[i]!=null&&bbO.up[i-1]!=null&&c.close>bbO.up[i]&&p.close<=bbO.up[i-1]){
       let s=2;const co=['突破布林上軌'];
       if(vs){co.push('成交量放大確認');s+=2;}
-      if(r!=null&&r>55&&r<78){co.push('RSI強勢('+r.toFixed(0)+')');s++;}
+      if(r!=null&&r>CFG.rsi_bb_lo&&r<CFG.rsi_bb_hi){
+        if(rsiAboveSlow){co.push('RSI強勢('+r.toFixed(0)+') 快>慢線✓');s+=2;}
+        else{co.push('RSI('+r.toFixed(0)+')');s+=1;}
+      }
       if(a200){co.push('MA200多頭');s++;}if(mh[i]!=null&&mh[i]>0){co.push('MACD正區域');s++;}
-      if(s>=4)hit={n:'🚀 布林上軌突破',co,s,ms:7,tp:0.08,sl:0.03};}
-    if(!hit&&r1!=null&&r!=null&&r1<30&&r>32&&bull){
+      if(s>=CFG.min_signal_score) hit={n:'🚀 布林上軌突破',co,s,ms:8};}
+
+    // ─── 🔄 RSI Oversold Bounce ───
+    if(!hit&&r1!=null&&r!=null&&r1<CFG.rsi_oversold&&r>CFG.rsi_oversold+2&&bull){
       let s=2;const co=['RSI從超賣回升'];
+      if(rsiCrossUp){co.push('RSI快線上穿慢線✓');s+=2;}
+      else if(rsiAboveSlow){co.push('RSI快>慢線');s+=1;}
       if(n200){co.push('MA200強力支撐');s+=2;}
       if(bbO.lo[i-1]!=null&&p.low<=bbO.lo[i-1]){co.push('布林下軌彈升');s++;}
       if(vs){co.push('成交量放大');s++;}
       if(mh[i]!=null&&mh[i-1]!=null&&mh[i]>mh[i-1]){co.push('MACD動能回升');s++;}
-      if(s>=4)hit={n:'🔄 RSI超賣反彈',co,s,ms:7,tp:0.05,sl:0.025};}
-    if(!hit){const c0=D[i],c1=D[i-1],c2=D[i-2];
+      if(s>=CFG.min_signal_score) hit={n:'🔄 RSI超賣反彈',co,s,ms:7};}
+
+    // ─── 🏛️ Three White Soldiers ───
+    if(!hit&&i>=2){const c0=D[i],c1=D[i-1],c2=D[i-2];
       if(c0.close>c0.open&&c1.close>c1.open&&c2.close>c2.open&&
-         c0.close>c1.close&&c1.close>c2.close&&Math.abs(c0.open-c1.close)/c1.close<0.006){
+         c0.close>c1.close&&c1.close>c2.close&&Math.abs(c0.open-c1.close)/c1.close<CFG.tws_gap_pct){
         let s=3;const co=['三白兵型態'];
         if(vs){co.push('量能持續放大');s++;}if(a200){co.push('MA200多方');s++;}
-        if(r!=null&&r<70){co.push('RSI未超買('+r.toFixed(0)+')');s++;}
-        if(s>=4)hit={n:'🏛️ 三白兵',co,s,ms:6,tp:0.07,sl:0.04};}}
-    if(hit){const ep=c.close;
-      out.push({index:i,date:c.date,close:ep,pattern:hit.n,conds:hit.co,str:hit.s,maxStr:hit.ms,
-        entry:ep,tp:+(ep*(1+hit.tp)).toFixed(6),sl:+(ep*(1-hit.sl)).toFixed(6),
-        tpPct:+(hit.tp*100).toFixed(1),slPct:+(hit.sl*100).toFixed(1)});}}
+        if(r!=null&&r<CFG.rsi_overbought){
+          if(rsiAboveSlow){co.push('RSI未超買('+r.toFixed(0)+') 快>慢線✓');s+=2;}
+          else{co.push('RSI未超買('+r.toFixed(0)+')');s+=1;}
+        }
+        if(s>=CFG.min_signal_score) hit={n:'🏛️ 三白兵',co,s,ms:7};}}
+
+    // ─── Build signal with ATR-based TP/SL (Optimization #1) ───
+    if(hit&&atr!=null&&atr>0){
+      // Entry price: next bar open (Optimization #3)
+      const ep=(CFG.entry_mode==='next_open'&&i+1<D.length)?D[i+1].open:c.close;
+      const tp=+(ep+CFG.atr_tp_mult*atr).toFixed(6);
+      const sl=+(ep-CFG.atr_sl_mult*atr).toFixed(6);
+      const tpPct=+((tp-ep)/ep*100).toFixed(2);
+      const slPct=+((ep-sl)/ep*100).toFixed(2);
+      out.push({index:i,date:c.date,close:c.close,pattern:hit.n,conds:hit.co,str:hit.s,maxStr:hit.ms,
+        entry:+ep.toFixed(6),tp,sl,tpPct,slPct,atr:+atr.toFixed(6),
+        entryMode:CFG.entry_mode==='next_open'?'下根開盤':'當根收盤'});
+    }
+  }
+  // Deduplicate: keep highest score within 5-bar window
   const ded=[];
   out.forEach(s=>{
     if(!ded.length||s.index-ded[ded.length-1].index>5)ded.push(s);
     else if(s.str>ded[ded.length-1].str)ded[ded.length-1]=s;});
   S.sigs=ded;
 }
+
+/* ══ BACKTEST (Optimization #3: Next-bar entry + Trailing Stop) ══ */
 function doBacktest(){
-  S.btR=S.sigs.map(s=>{const D=S.data;
-    for(let i=s.index+1;i<D.length&&i<=s.index+30;i++){const c=D[i];
-      if(c.high>=s.tp)return{...s,result:'WIN',exit:s.tp,bars:i-s.index,pnl:+((s.tp-s.entry)/s.entry*100).toFixed(2)};
-      if(c.low<=s.sl)return{...s,result:'LOSS',exit:s.sl,bars:i-s.index,pnl:+((s.sl-s.entry)/s.entry*100).toFixed(2)};}
-    const e=D[Math.min(s.index+30,D.length-1)].close,pnl=+((e-s.entry)/s.entry*100).toFixed(2);
-    return{...s,result:pnl>=0?'WIN':'LOSS',exit:e,bars:30,pnl};});}
+  S.btR=S.sigs.map(s=>{
+    const D=S.data;
+    const entryBar=CFG.entry_mode==='next_open'?s.index+1:s.index;
+    if(entryBar>=D.length) return{...s,result:'SKIP',exit:s.entry,bars:0,pnl:0,exitType:'資料不足'};
+
+    const ep=s.entry;
+    let curSL=s.sl;
+    let highWater=ep;
+    const maxBars=CFG.exit_mode==='trailing'?CFG.max_hold_bars:CFG.fixed_hold_bars;
+
+    for(let i=entryBar+1;i<D.length&&i<=entryBar+maxBars;i++){
+      const bar=D[i];
+
+      // Check stop-loss first (worst case)
+      if(bar.low<=curSL){
+        const exit=+curSL.toFixed(6);
+        const pnl=+((exit-ep)/ep*100).toFixed(2);
+        return{...s,result:pnl>=0?'WIN':'LOSS',exit,bars:i-entryBar,pnl,
+          exitType:highWater>ep?'移動停損':'初始停損'};
+      }
+      // Check take-profit
+      if(bar.high>=s.tp){
+        const pnl=+((s.tp-ep)/ep*100).toFixed(2);
+        return{...s,result:'WIN',exit:s.tp,bars:i-entryBar,pnl,exitType:'止盈達標'};
+      }
+      // Trailing stop: update high water mark + move SL up
+      if(CFG.exit_mode==='trailing'&&bar.high>highWater){
+        highWater=bar.high;
+        const atrVal=S.atrA[i]||s.atr;
+        const newSL=+(highWater-CFG.atr_trail_mult*atrVal).toFixed(6);
+        if(newSL>curSL) curSL=newSL; // only move up, never down
+      }
+    }
+    // Max hold expired
+    const lastBar=D[Math.min(entryBar+maxBars,D.length-1)];
+    const exit=lastBar.close;
+    const pnl=+((exit-ep)/ep*100).toFixed(2);
+    return{...s,result:pnl>=0?'WIN':'LOSS',exit:+exit.toFixed(6),bars:maxBars,pnl,exitType:'持倉到期'};
+  }).filter(r=>r.result!=='SKIP');
+}
 function compute(){
   const D=S.data;S.cl=D.map(d=>d.close);S.vl=D.map(d=>d.volume);
   S.macd=S.cl.length?_macd(S.cl):{line:[],sig:[],hist:[]};
   S.rsi=S.cl.length?_rsi(S.cl):[];
-  S.ma200=S.cl.length>=200?_sma(S.cl,200):S.cl.map(()=>null);
-  S.ma50=S.cl.length>=50?_sma(S.cl,50):S.cl.map(()=>null);
-  S.bb=S.cl.length>=20?_bb(S.cl):{up:[],mid:[],lo:[]};
-  S.poc=D.length>=20?_poc(D):null;
+  S.rsiSlow=S.rsi.length?_rsiSlow(S.rsi):[];          // RSI slow line
+  S.atrA=D.length>=CFG.atr_period?_atr(D):D.map(()=>null); // ATR array
+  S.ma200=S.cl.length>=CFG.ma200_period?_sma(S.cl,CFG.ma200_period):S.cl.map(()=>null);
+  S.ma50=S.cl.length>=CFG.ma50_period?_sma(S.cl,CFG.ma50_period):S.cl.map(()=>null);
+  S.bb=S.cl.length>=CFG.bb_period?_bb(S.cl):{up:[],mid:[],lo:[]};
+  S.poc=D.length>=CFG.poc_lookback?_poc(D):null;
   detectSignals();doBacktest();
 }
 
@@ -456,6 +639,7 @@ function svgRSI(sub,w,h){
     s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="1" '+(v!==50?'stroke-dasharray="3 3"':'')+'/>';
     s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(v)+4).toFixed(1)+'" fill="'+col+'" font-size="8" font-family="monospace">'+v+'</text>';});
   const rp=lp(sub.map(d=>d.rsi),tx,ty);if(rp)s+='<path d="'+rp+'" fill="none" stroke="#a78bfa" stroke-width="1.5"/>';
+  const rsp=lp(sub.map(d=>d.rsiSlow),tx,ty);if(rsp)s+='<path d="'+rsp+'" fill="none" stroke="#f97316" stroke-width="1" stroke-dasharray="4 2"/>';
   return s+'</svg>';}
 
 /* ══ SIDEBAR ════════════════════════════════════════════ */
@@ -524,7 +708,7 @@ function getDisp(){
     bb:{up:S.bb.up.slice(si),mid:(S.bb.mid||[]).slice(si),lo:S.bb.lo.slice(si)},
     sigs:S.sigs.filter(s=>s.index>=si),
     sub:S.data.slice(si).map((c,ii)=>({date:c.date,vol:c.volume,bull:c.close>=c.open,
-      macd:S.macd.line[si+ii],sig:S.macd.sig[si+ii],hist:S.macd.hist[si+ii],rsi:S.rsi[si+ii]}))};
+      macd:S.macd.line[si+ii],sig:S.macd.sig[si+ii],hist:S.macd.hist[si+ii],rsi:S.rsi[si+ii],rsiSlow:S.rsiSlow[si+ii]}))};
 }
 function bStats(){
   const wins=S.btR.filter(r=>r.result==='WIN').length,tot=S.btR.length;
@@ -596,6 +780,7 @@ function renderCharts(){
   const tabBar='<div style="display:flex;gap:5px;margin-bottom:6px;align-items:center;flex-wrap:wrap">'
     +'<button class="tab-btn'+(S.tab==='chart'?' on':'')+'" onclick="setTab(\'chart\')">📈 圖表分析</button>'
     +'<button class="tab-btn'+(S.tab==='backtest'?' on':'')+'" onclick="setTab(\'backtest\')">📋 回測報告</button>'
+    +'<button class="tab-btn'+(S.tab==='config'?' on':'')+'" onclick="setTab(\'config\')">⚙ 參數</button>'
     +'<span style="margin-left:10px;display:flex;gap:3px">'
       +'<button onclick="setRange(\'recent\')" style="padding:3px 10px;border-radius:3px;border:1px solid '+(S.range==='recent'?'#60a5fa':'#162233')+';background:'+(S.range==='recent'?'#60a5fa22':'transparent')+';color:'+(S.range==='recent'?'#60a5fa':'#5a7394')+'">近期</button>'
       +'<button onclick="setRange(\'all\')" style="padding:3px 10px;border-radius:3px;border:1px solid '+(S.range==='all'?'#60a5fa':'#162233')+';background:'+(S.range==='all'?'#60a5fa22':'transparent')+';color:'+(S.range==='all'?'#60a5fa':'#5a7394')+'">全歷史</button>'
@@ -612,7 +797,7 @@ function renderCharts(){
       +'<div style="background:#000000;border-radius:7px;margin-bottom:5px;padding:5px 0 2px">'+svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,300)+'</div>'
       +'<div class="cbox"><div class="clbl">成交量 Volume</div>'+svgVol(sub,chartW,58)+'</div>'
       +'<div class="cbox"><div class="clbl">MACD(12,26,9) <span style="color:#60a5fa">── MACD</span><span style="color:#f97316">── Signal</span></div>'+svgMACD(sub,chartW,90)+'</div>'
-      +'<div class="cbox"><div class="clbl">RSI(14) <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>'+svgRSI(sub,chartW,90)+'</div>';
+      +'<div class="cbox"><div class="clbl">RSI(14) <span style="color:#a78bfa">── 快線</span> <span style="color:#f97316">-- 慢線(MA9)</span> <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>'+svgRSI(sub,chartW,90)+'</div>';
   }else{
     const{wins,tot,wr,avgW,avgL,byP}=bStats();
     html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px">'
@@ -648,13 +833,48 @@ function renderCharts(){
       +S.btR.slice().reverse().map(r=>
         '<div style="background:var(--card);border-radius:5px;padding:7px 9px;margin-bottom:4px;border-left:3px solid '+(r.result==='WIN'?'#22c55e':'#ef4444')+';display:flex;justify-content:space-between;align-items:center">'
           +'<div><span style="font-size:9px;color:var(--dim)">'+r.date+' </span><span style="font-size:10px">'+r.pattern+'</span>'
-            +'<div style="font-size:9px;color:var(--dim);margin-top:1px">進:'+fp(r.entry)+' → 出:'+fp(r.exit)+'</div></div>'
+            +'<div style="font-size:9px;color:var(--dim);margin-top:1px">進:'+fp(r.entry)+' → 出:'+fp(r.exit)+(r.exitType?' ('+r.exitType+')':'')+'</div></div>'
           +'<div style="text-align:right">'
             +'<div style="font-size:11px;font-weight:bold;color:'+(r.result==='WIN'?'#22c55e':'#ef4444')+'">'+(r.pnl>0?'+':'')+r.pnl+'%</div>'
             +'<div style="font-size:9px;color:var(--dim)">'+r.bars+'根K棒</div>'
           +'</div>'
         +'</div>').join('')
       +'</div>';}
+  if(S.tab==='config'){
+    const cfgRows=[
+      ['atr_period','ATR 週期','number'],['atr_sl_mult','停損倍數 N','number'],
+      ['atr_tp_mult','停盈倍數 M','number'],['atr_trail_mult','移動停損倍數 T','number'],
+      ['rsi_period','RSI 週期','number'],['rsi_slow_period','RSI 慢線週期','number'],
+      ['rsi_oversold','RSI 超賣','number'],['rsi_overbought','RSI 超買','number'],
+      ['vol_lookback','成交量回看根數','number'],['vol_surge_mult','成交量放大倍數','number'],
+      ['ma200_proximity','MA200 接近閾值','number'],['min_signal_score','最低觸發分數','number'],
+      ['max_hold_bars','最大持倉K棒數','number'],
+    ];
+    html+='<div style="background:var(--card);border-radius:8px;padding:14px;margin-top:4px">'
+      +'<div style="font-size:13px;color:var(--bl);margin-bottom:10px;font-weight:bold">⚙ 全局參數設定 (Global Config)</div>'
+      +'<div style="font-size:10px;color:var(--dim);margin-bottom:12px;line-height:1.6">'
+        +'所有閾值已從程式碼中抽離為全局變數。修改後點「套用並重新計算」即時生效。'
+      +'</div>'
+      +cfgRows.map(([k,l,t])=>
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #162233">'
+          +'<label style="font-size:11px;color:var(--mid)">'+l+'</label>'
+          +'<input id="cfg_'+k+'" type="number" step="any" value="'+CFG[k]+'" '
+            +'style="width:70px;background:#0a1628;border:1px solid #162233;border-radius:3px;color:var(--text);padding:3px 6px;font-family:monospace;font-size:12px;text-align:right">'
+        +'</div>').join('')
+      +'<div style="display:flex;gap:8px;margin-top:14px">'
+        +'<button onclick="applyCfg()" style="flex:1;padding:8px;border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:4px;font-size:12px">套用並重新計算</button>'
+        +'<button onclick="resetCfg()" style="padding:8px 12px;border:1px solid #2d4156;background:transparent;color:#5a7394;border-radius:4px;font-size:12px">重置預設</button>'
+      +'</div>'
+      +'<div style="margin-top:14px;font-size:10px;color:#2d4156;line-height:1.7">'
+        +'<div style="color:#f59e0b;margin-bottom:4px">公式對照</div>'
+        +'<div>止損 SL = 進場價 - (N × ATR)</div>'
+        +'<div>止盈 TP = 進場價 + (M × ATR)</div>'
+        +'<div>移動停損 = 最高價 - (T × ATR)</div>'
+        +'<div style="margin-top:4px">進場 = 訊號觸發後下一根K棒開盤價</div>'
+        +'<div>RSI確認 = RSI快線 > RSI慢線(SMA'+CFG.rsi_slow_period+')</div>'
+      +'</div>'
+    +'</div>';
+  }
   document.getElementById('chart-content').innerHTML=html;}
 
 function renderPanel(){
@@ -674,6 +894,8 @@ function renderPanel(){
     {l:'BB上軌',v:bbu?fp(bbu):'—',s:bbu?px>bbu?'已突破':'正常':'—',c:px>bbu?'#f59e0b':'#5a7394'},
     {l:'BB下軌',v:bbl?fp(bbl):'—',s:bbl?px<bbl?'已跌破':'正常':'—',c:px<bbl?'#ef4444':'#5a7394'},
     {l:'POC',v:S.poc?fp(S.poc):'—',s:S.poc?px>S.poc?'高於POC':'低於POC':'—',c:S.poc&&px>S.poc?'#22c55e':'#ef4444'},
+    {l:'ATR('+CFG.atr_period+')',v:S.atrA[S.atrA.length-1]?fp(S.atrA[S.atrA.length-1]):'—',s:S.atrA[S.atrA.length-1]?((S.atrA[S.atrA.length-1]/px*100).toFixed(1)+'%波幅'):'N/A',c:'#5a7394'},
+    {l:'RSI慢線',v:S.rsiSlow[S.rsiSlow.length-1]!=null?S.rsiSlow[S.rsiSlow.length-1].toFixed(1):'—',s:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null)?(r>S.rsiSlow[S.rsiSlow.length-1]?'快>慢 多':'快<慢 空'):'N/A',c:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null&&r>S.rsiSlow[S.rsiSlow.length-1])?'#22c55e':'#ef4444'},
   ];
   const last=S.sigs[S.sigs.length-1];const{byP}=bStats();
   let html='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 當前指標狀態</div>'
@@ -739,12 +961,58 @@ function setEx(k){S.ex=k;fetchData();}
 function setTF(t){S.tf=t;fetchData();}
 function setTab(t){S.tab=t;renderCharts();}
 function setRange(r){S.range=r;renderCharts();}
+function applyCfg(){
+  const keys=['atr_period','atr_sl_mult','atr_tp_mult','atr_trail_mult',
+    'rsi_period','rsi_slow_period','rsi_oversold','rsi_overbought',
+    'vol_lookback','vol_surge_mult','ma200_proximity','min_signal_score','max_hold_bars'];
+  keys.forEach(k=>{
+    const el=document.getElementById('cfg_'+k);
+    if(el){const v=parseFloat(el.value);if(!isNaN(v))CFG[k]=v;}
+  });
+  compute();renderAll();
+}
+function resetCfg(){
+  Object.assign(CFG,{atr_period:14,atr_sl_mult:1.5,atr_tp_mult:3.0,atr_trail_mult:2.0,
+    rsi_period:14,rsi_slow_period:9,rsi_oversold:30,rsi_overbought:70,rsi_engulf_max:55,
+    rsi_macd_lo:45,rsi_macd_hi:72,rsi_bb_lo:55,rsi_bb_hi:78,
+    vol_lookback:10,vol_surge_mult:1.4,ma200_period:200,ma50_period:50,ma200_proximity:0.015,
+    bb_period:20,bb_mult:2,macd_fast:12,macd_slow:26,macd_signal:9,
+    poc_lookback:60,poc_bins:50,hammer_shadow_ratio:2.5,hammer_wick_ratio:0.4,
+    engulf_tolerance:1.003,tws_gap_pct:0.006,min_signal_score:4,
+    entry_mode:'next_open',exit_mode:'trailing',max_hold_bars:120,fixed_hold_bars:30});
+  compute();renderAll();
+}
 window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(()=>renderAll(),200);});
 
 // Init
 renderHdr();renderCharts();renderPanel();
 fetchData();
 fetchTop100();
+
+// Config display helper
+function showConfig(){
+  const el=document.getElementById('panel-content');
+  const rows=[
+    ['ATR 週期','atr_period'],['ATR 停損倍數 (N)','atr_sl_mult'],
+    ['ATR 停盈倍數 (M)','atr_tp_mult'],['ATR 移動停損倍數','atr_trail_mult'],
+    ['RSI 週期','rsi_period'],['RSI 慢線週期','rsi_slow_period'],
+    ['RSI 超賣','rsi_oversold'],['RSI 超買','rsi_overbought'],
+    ['成交量回看','vol_lookback'],['成交量放大倍數','vol_surge_mult'],
+    ['MA200 接近閾值','ma200_proximity'],['進場模式','entry_mode'],
+    ['出場模式','exit_mode'],['最大持倉K棒','max_hold_bars'],
+  ];
+  const h='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 系統參數 (CFG)</div>'
+    +rows.map(([l,k])=>'<div class="prow"><span style="font-size:10px;color:var(--dim)">'+l+'</span><span style="font-size:11px;color:var(--bl)">'+CFG[k]+'</span></div>').join('')
+    +'<div style="margin-top:12px;font-size:9px;color:#2d4156;line-height:1.6">'
+      +'<div style="color:#f59e0b;margin-bottom:4px">▸ 參數說明</div>'
+      +'<div>止損 = 進場價 - N × ATR</div>'
+      +'<div>止盈 = 進場價 + M × ATR</div>'
+      +'<div>移動停損 = 最高價 - T × ATR</div>'
+      +'<div style="margin-top:4px">進場: 訊號觸發後下一根開盤價</div>'
+      +'<div>RSI: 快線須高於慢線才計分</div>'
+    +'</div>';
+  el.innerHTML=h;
+}
 </script>
 </body>
 </html>
