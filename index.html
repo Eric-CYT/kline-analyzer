@@ -64,6 +64,7 @@ button{cursor:pointer;font-family:'Courier New',monospace;font-size:12px;border-
 /* ── Main area ── */
 #main{display:flex;flex:1;overflow:hidden}
 #charts{flex:1;overflow-y:auto;padding:7px 5px 7px 7px}
+#candle-wrap{position:relative;cursor:grab;user-select:none;touch-action:none}
 #panel{width:300px;background:var(--card);border-left:1px solid var(--bd);padding:10px;overflow-y:auto;flex-shrink:0}
 .cbox{background:var(--card);border-radius:7px;margin-bottom:5px;padding:4px 6px}
 .clbl{font-size:11px;color:var(--dim);margin-bottom:2px;display:flex;gap:10px;align-items:center}
@@ -105,10 +106,11 @@ button{cursor:pointer;font-family:'Courier New',monospace;font-size:12px;border-
   <div id="sidebar">
     <div id="sb-hdr">
       <div id="sb-tabs">
-        <button id="sb-all" class="sb-tab on" onclick="setSideTab('all')">全部 Top100</button>
+        <button id="sb-all" class="sb-tab on" onclick="setSideTab('all')">Top100</button>
         <button id="sb-fav" class="sb-tab" onclick="setSideTab('fav')">★ 最愛</button>
+        <button id="sb-scan" class="sb-tab" onclick="setSideTab('scan')">🏆 推薦</button>
       </div>
-      <button id="sb-rf" onclick="fetchTop100()" title="刷新排名">⟳</button>
+      <button id="sb-rf" onclick="sideTab==='scan'?scanWinRates():fetchTop100()" title="刷新/掃描">⟳</button>
     </div>
     <input id="sb-filter" placeholder="🔍 篩選幣種..." oninput="renderSidebar()">
     <div id="coin-list">
@@ -129,13 +131,13 @@ const ALL_PAIRS=['BTC','ETH','SOL','BNB','XRP','DOGE','ADA','AVAX','DOT','LINK',
   'UNI','AAVE','COMP','MKR','CRV','SNX','GMX','DYDX','ARB','OP','INJ','SUI','APT','SEI','TIA',
   'NEAR','FIL','ATOM','ICP','EGLD','PEPE','WIF','BONK','FLOKI','SHIB','BOME','GRT','FET','OCEAN',
   'RNDR','WLD','SAND','MANA','ENJ','IMX','JUP','PYTH','PENDLE','HBAR','VET','XLM','TRX','ORDI'];
-const TFS=['1D','4H','1H','15M'];
+const TFS=['3M','1M','1W','1D','4H','1H','15M'];
 const STABLES=new Set(['USDT','USDC','BUSD','DAI','TUSD','USDP','USDD','FRAX','GUSD','LUSD','PYUSD','EURT','FDUSD']);
 
 const EX={
   binance:{label:'Binance',color:'#F0B90B',sym:c=>c+'USDT',
     async get(sym,tf,n){
-      const iv={'1D':'1d','4H':'4h','1H':'1h','15M':'15m'}[tf];
+      const iv={'3M':'3M','1M':'1M','1W':'1w','1D':'1d','4H':'4h','1H':'1h','15M':'15m'}[tf];
       const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${iv}&limit=${n}`);
       if(!r.ok)throw new Error(`Binance HTTP ${r.status}`);
       const d=await r.json();if(!Array.isArray(d))throw new Error('Binance異常回應');
@@ -143,7 +145,7 @@ const EX={
     }},
   bybit:{label:'Bybit',color:'#F7A600',sym:c=>c+'USDT',
     async get(sym,tf,n){
-      const iv={'1D':'D','4H':'240','1H':'60','15M':'15'}[tf];
+      const iv={'3M':'M','1M':'M','1W':'W','1D':'D','4H':'240','1H':'60','15M':'15'}[tf];
       const r=await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${sym}&interval=${iv}&limit=${n}`);
       if(!r.ok)throw new Error(`Bybit HTTP ${r.status}`);
       const d=await r.json();if(d.retCode!==0)throw new Error(`Bybit: ${d.retMsg}`);
@@ -151,7 +153,7 @@ const EX={
     }},
   okx:{label:'OKX',color:'#00C2FF',sym:c=>c+'-USDT',
     async get(sym,tf,n){
-      const iv={'1D':'1D','4H':'4H','1H':'1H','15M':'15m'}[tf];
+      const iv={'3M':'3M','1M':'1M','1W':'1W','1D':'1D','4H':'4H','1H':'1H','15M':'15m'}[tf];
       const r=await fetch(`https://www.okx.com/api/v5/market/candles?instId=${sym}&bar=${iv}&limit=${n}`);
       if(!r.ok)throw new Error(`OKX HTTP ${r.status}`);
       const d=await r.json();if(d.code!=='0')throw new Error(`OKX: ${d.msg}`);
@@ -161,10 +163,14 @@ const EX={
 
 /* ══ STATE ══════════════════════════════════════════════ */
 const S={ex:'binance',coin:'BTC',tf:'1D',range:'recent',data:[],loading:false,error:null,tab:'chart',updated:null,
-  cl:[],vl:[],macd:{line:[],sig:[],hist:[]},rsi:[],rsiSlow:[],atrA:[],ma200:[],ma50:[],bb:{up:[],mid:[],lo:[]},poc:null,sigs:[],btR:[]};
+  cl:[],vl:[],macd:{line:[],sig:[],hist:[]},rsi:[],rsiSlow:[],atrA:[],ma200:[],ma50:[],emas:{},bb:{up:[],mid:[],lo:[]},poc:null,sigs:[],btR:[]};
 let sideTab='all';
 let top100=[];
 let sbLoading=true;
+let scanResults={};
+let scanRunning=false;
+let scanTimer=null;
+let lastScanTime=null;
 let favs=JSON.parse(localStorage.getItem('kl_favs')||'[]');
 let recent=JSON.parse(sessionStorage.getItem('kl_rec')||'[]');
 function addRecent(c){recent=[c,...recent.filter(x=>x!==c)].slice(0,6);sessionStorage.setItem('kl_rec',JSON.stringify(recent));}
@@ -289,8 +295,7 @@ const CFG = {
   vol_surge_mult: 1.4,    // volume surge multiplier
 
   // ── MA ──
-  ma200_period: 200,
-  ma50_period: 50,
+  ema_periods: [100, 200, 300, 500],
   ma200_proximity: 0.015, // 1.5% proximity threshold
 
   // ── Bollinger Bands ──
@@ -542,8 +547,12 @@ function compute(){
   S.rsi=S.cl.length?_rsi(S.cl):[];
   S.rsiSlow=S.rsi.length?_rsiSlow(S.rsi):[];          // RSI slow line
   S.atrA=D.length>=CFG.atr_period?_atr(D):D.map(()=>null); // ATR array
-  S.ma200=S.cl.length>=CFG.ma200_period?_sma(S.cl,CFG.ma200_period):S.cl.map(()=>null);
-  S.ma50=S.cl.length>=CFG.ma50_period?_sma(S.cl,CFG.ma50_period):S.cl.map(()=>null);
+  S.emas={};
+  CFG.ema_periods.forEach(p=>{
+    S.emas[p]=S.cl.length>=p?_ema(S.cl,p):S.cl.map(()=>null);
+  });
+  S.ma200=S.emas[200]||S.cl.map(()=>null);
+  S.ma50=S.emas[100]||S.cl.map(()=>null);
   S.bb=S.cl.length>=CFG.bb_period?_bb(S.cl):{up:[],mid:[],lo:[]};
   S.poc=D.length>=CFG.poc_lookback?_poc(D):null;
   detectSignals();doBacktest();
@@ -555,13 +564,13 @@ const fmtP=v=>{const a=Math.abs(v);
   if(a>=100000)return(v/1000).toFixed(0)+'K';if(a>=10000)return(v/1000).toFixed(1)+'K';
   if(a>=100)return v.toFixed(0);return v.toFixed(4);};
 
-function svgCandle(C,ma200,ma50,bb,poc,sigs,w,h){
+function svgCandle(C,ma200,ma50,bb,poc,sigs,w,h,emas){
   const P={t:12,r:76,b:18,l:6};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=C.length;
   if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
   const bw=Math.max(2,cw/n-0.8);
   let mn=Infinity,mx=-Infinity;
   C.forEach(c=>{mn=Math.min(mn,c.low);mx=Math.max(mx,c.high);});
-  [...bb.up,...bb.lo,...ma200,...ma50].forEach(v=>{if(v!=null){mn=Math.min(mn,v);mx=Math.max(mx,v);}});
+  [...bb.up,...bb.lo,...ma200,...ma50,...Object.values(emas||{}).flat()].forEach(v=>{if(v!=null){mn=Math.min(mn,v);mx=Math.max(mx,v);}});
   const pad=(mx-mn)*0.04;mn-=pad;mx+=pad;const R=mx-mn||1;
   const tx=i=>P.l+(i+0.5)*(cw/n),ty=p=>P.t+ch-((p-mn)/R)*ch;
   let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
@@ -580,8 +589,13 @@ function svgCandle(C,ma200,ma50,bb,poc,sigs,w,h){
   if(bbU)s+='<path d="'+bbU+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';
   if(bbL)s+='<path d="'+bbL+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';
   if(bbM)s+='<path d="'+bbM+'" fill="none" stroke="#6366f1" stroke-width="1" opacity=".45"/>';
-  const m5=lp(ma50,tx,ty);if(m5)s+='<path d="'+m5+'" fill="none" stroke="#38bdf8" stroke-width="1.2" opacity=".75" stroke-dasharray="5 2"/>';
-  const m2=lp(ma200,tx,ty);if(m2)s+='<path d="'+m2+'" fill="none" stroke="#f59e0b" stroke-width="1.5" opacity=".9"/>';
+  // EMA lines with distinct colors
+  const emaColors={'100':'#38bdf8','200':'#f59e0b','300':'#a78bfa','500':'#ef4444'};
+  const emaDash={'100':'5 2','200':'','300':'4 3','500':'6 2'};
+  if(emas){Object.entries(emas).forEach(([p,arr])=>{
+    const ep=lp(arr,tx,ty);
+    if(ep)s+='<path d="'+ep+'" fill="none" stroke="'+(emaColors[p]||'#5a7394')+'" stroke-width="'+(p==='200'?'1.5':'1.2')+'" opacity=".85" '+(emaDash[p]?'stroke-dasharray="'+emaDash[p]+'"':'')+'/>';
+  });}
   C.forEach((c,i)=>{const x=tx(i),col=c.close>=c.open?'#22c55e':'#ef4444';
     const bt=ty(Math.max(c.open,c.close)),bb2=ty(Math.min(c.open,c.close));
     s+='<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+ty(c.high).toFixed(1)+'" y2="'+ty(c.low).toFixed(1)+'" stroke="'+col+'" stroke-width="1"/>';
@@ -670,11 +684,49 @@ function renderSidebar(){
   const allBtn=document.getElementById('sb-all'),favBtn=document.getElementById('sb-fav');
   if(allBtn)allBtn.className='sb-tab'+(sideTab==='all'?' on':'');
   if(favBtn)favBtn.className='sb-tab'+(sideTab==='fav'?' on':'');
-  if(sbLoading){
+  const scanBtn=document.getElementById('sb-scan');
+  if(scanBtn){
+    scanBtn.className='sb-tab'+(sideTab==='scan'?' on':'');
+    const scanCount=Object.keys(scanResults).length;
+    if(scanCount>0) scanBtn.textContent='🏆 推薦('+scanCount+')';
+  }
+  if(sbLoading&&sideTab!=='scan'){
     document.getElementById('coin-list').innerHTML='<div style="text-align:center;padding:24px 10px;color:#2d4156"><div style="font-size:18px;margin-bottom:8px">⟳</div><div style="font-size:10px">載入 Top 100…</div></div>';
     return;}
+
   const fv=(document.getElementById('sb-filter')?.value||'').trim().toUpperCase();
-  // Build display list
+
+  // ── scan tab ──
+  if(sideTab==='scan'){
+    const entries=Object.entries(scanResults).sort((a,b)=>b[1].wr-a[1].wr);
+    let filtered=fv?entries.filter(([sym])=>sym.includes(fv)):entries;
+    if(!filtered.length){
+      document.getElementById('coin-list').innerHTML=
+        '<div style="text-align:center;padding:20px 10px;color:#2d4156;font-size:10px;line-height:1.8">'
+        +(scanRunning?'<div style="font-size:16px;margin-bottom:6px" class="spin">⟳</div>正在掃描 Top100 幣種…<br><span style="color:#3d5470">'+Object.keys(scanResults).length+' / '+top100.length+' 完成</span>'
+          :'點擊右上 ⟳ 開始掃描<br>或等待每小時自動掃描')
+        +'</div>';
+      return;}
+    document.getElementById('coin-list').innerHTML=
+      (lastScanTime?'<div style="font-size:9px;color:#2d4156;padding:4px 8px;border-bottom:1px solid #0d1825">上次掃描: '+lastScanTime+'</div>':'')
+      +(scanRunning?'<div style="font-size:9px;color:#f59e0b;padding:4px 8px;border-bottom:1px solid #0d1825">掃描中… '+Object.keys(scanResults).length+'/'+top100.length+'</div>':'')
+      +filtered.slice(0,20).map(([sym,d],idx)=>{
+        const isActive=sym===S.coin,isFav=favs.includes(sym);
+        const wrCol=d.wr>60?'#22c55e':d.wr>45?'#f59e0b':'#ef4444';
+        return '<div class="ci'+(isActive?' active':'')+'" onclick="pickCoin(\''+sym+'\')">'
+          +'<span class="ci-rank" style="color:'+wrCol+';font-weight:bold">'+(idx+1)+'</span>'
+          +'<div class="ci-mid">'
+            +'<span class="ci-sym">'+sym+'</span>'
+            +'<span class="ci-price">'+d.sigs+'訊號 · '+d.wins+'勝</span>'
+          +'</div>'
+          +'<span style="font-size:13px;font-weight:bold;color:'+wrCol+';min-width:38px;text-align:right">'+d.wr.toFixed(0)+'%</span>'
+          +'<span class="ci-star'+(isFav?' on':'')+'" onclick="toggleFav(\''+sym+'\',event)">'+(isFav?'★':'☆')+'</span>'
+        +'</div>';
+      }).join('');
+    return;
+  }
+
+  // ── all / fav tabs ──
   let baseList=sideTab==='fav'
     ?[...top100.filter(c=>favs.includes(c.symbol)),
        ...favs.filter(s=>!top100.some(c=>c.symbol===s)).map(s=>({rank:'★',symbol:s,name:s,price:0,change24h:0}))]
@@ -688,10 +740,12 @@ function renderSidebar(){
     const isFav=favs.includes(c.symbol),isActive=c.symbol===S.coin;
     const col=c.change24h>=0?'#22c55e':'#ef4444',sign=c.change24h>=0?'+':'';
     const chgStr=c.change24h!==0?sign+c.change24h.toFixed(1)+'%':'—';
+    const sr=scanResults[c.symbol];
+    const wrBadge=sr?'<span style="font-size:8px;padding:1px 3px;border-radius:2px;margin-left:3px;background:'+(sr.wr>55?'#22c55e22':'#ef444422')+';color:'+(sr.wr>55?'#22c55e':'#ef4444')+'">'+sr.wr.toFixed(0)+'%</span>':'';
     return '<div class="ci'+(isActive?' active':'')+'" onclick="pickCoin(\''+c.symbol+'\')">'
       +'<span class="ci-rank">'+c.rank+'</span>'
       +'<div class="ci-mid">'
-        +'<span class="ci-sym">'+c.symbol+'</span>'
+        +'<span class="ci-sym">'+c.symbol+wrBadge+'</span>'
         +(c.price?'<span class="ci-price">'+fpS(c.price)+'</span>':'')
       +'</div>'
       +'<span class="ci-chg" style="color:'+col+'">'+chgStr+'</span>'
@@ -699,12 +753,58 @@ function renderSidebar(){
       +'</div>';
   }).join('');}
 
+// ── Win-rate scanner ──
+async function scanWinRates(){
+  if(scanRunning) return;
+  scanRunning=true;scanResults={};renderSidebar();
+  const coins=top100.map(c=>c.symbol).slice(0,100);
+  for(let ci=0;ci<coins.length;ci++){
+    const sym=coins[ci];
+    try{
+      const ex=EX[S.ex];
+      const data=await ex.get(ex.sym(sym),'1D',300);
+      if(!data||data.length<50) continue;
+      // Quick compute
+      const cl=data.map(d=>d.close),vl=data.map(d=>d.volume);
+      const macd=_macd(cl),rsi=_rsi(cl),rsiSlow=_rsiSlow(rsi);
+      const ma200=cl.length>=200?_ema(cl,200):cl.map(()=>null);
+      const bb=cl.length>=20?_bb(cl):{up:[],mid:[],lo:[]};
+      const atrArr=_atr(data);
+      // Temporarily swap state
+      const oldState={data:S.data,cl:S.cl,vl:S.vl,macd:S.macd,rsi:S.rsi,rsiSlow:S.rsiSlow,
+        ma200:S.ma200,bb:S.bb,atrA:S.atrA,sigs:S.sigs,btR:S.btR};
+      S.data=data;S.cl=cl;S.vl=vl;S.macd=macd;S.rsi=rsi;S.rsiSlow=rsiSlow;
+      S.ma200=ma200;S.bb=bb;S.atrA=atrArr;
+      detectSignals();doBacktest();
+      const sigs=S.sigs.length,wins=S.btR.filter(r=>r.result==='WIN').length;
+      const wr=sigs>0?+(wins/sigs*100).toFixed(1):0;
+      if(sigs>=2) scanResults[sym]={sigs,wins,wr};
+      // Restore
+      Object.assign(S,oldState);
+    }catch(e){}
+    if(ci%5===0) renderSidebar();
+    await new Promise(r=>setTimeout(r,350)); // rate limit
+  }
+  scanRunning=false;lastScanTime=new Date().toLocaleTimeString();
+  renderSidebar();
+}
+
+// Auto-scan every hour
+function startAutoScan(){
+  if(scanTimer) clearInterval(scanTimer);
+  scanTimer=setInterval(()=>{if(top100.length>0)scanWinRates();},3600000);
+}
+
 /* ══ DISPLAY & RENDER ═══════════════════════════════════ */
-let chartW=640,resizeT=null;
+let chartW=640,chartH=300,zoomLevel=1.0,panOffset=0,resizeT=null;
 function getDisp(){
-  const SHOW=S.range==='all'?S.data.length:({'1D':80,'4H':120,'1H':100,'15M':100}[S.tf]||80);
-  const si=Math.max(0,S.data.length-SHOW);
+  const baseShow=S.range==='all'?S.data.length:({'3M':60,'1M':80,'1W':80,'1D':80,'4H':120,'1H':100,'15M':100}[S.tf]||80);
+  const zoomedShow=Math.max(15,Math.min(S.data.length,Math.round(baseShow/zoomLevel)));
+  const maxOffset=Math.max(0,S.data.length-zoomedShow);
+  const clampedPan=Math.max(-maxOffset,Math.min(0,panOffset));
+  const si=Math.max(0,S.data.length-zoomedShow+clampedPan);
   return{si,candles:S.data.slice(si),ma200:S.ma200.slice(si),ma50:S.ma50.slice(si),
+    emas:Object.fromEntries(CFG.ema_periods.map(p=>[p,(S.emas[p]||[]).slice(si)])),
     bb:{up:S.bb.up.slice(si),mid:(S.bb.mid||[]).slice(si),lo:S.bb.lo.slice(si)},
     sigs:S.sigs.filter(s=>s.index>=si),
     sub:S.data.slice(si).map((c,ii)=>({date:c.date,vol:c.volume,bull:c.close>=c.open,
@@ -776,7 +876,7 @@ function renderCharts(){
       +'</div>'
       +'<button onclick="fetchData()" style="margin-top:8px;padding:6px 20px;border:1px solid #3d5470;border-radius:4px;background:transparent;color:#5a7394;cursor:pointer">⟳ 重新載入 BTC</button>'
       +'</div>';return;}
-  const{candles,ma200,ma50,bb,sigs,sub}=getDisp();
+  const d=getDisp();const{candles,ma200,ma50,bb,sigs,sub}=d;
   const tabBar='<div style="display:flex;gap:5px;margin-bottom:6px;align-items:center;flex-wrap:wrap">'
     +'<button class="tab-btn'+(S.tab==='chart'?' on':'')+'" onclick="setTab(\'chart\')">📈 圖表分析</button>'
     +'<button class="tab-btn'+(S.tab==='backtest'?' on':'')+'" onclick="setTab(\'backtest\')">📋 回測報告</button>'
@@ -785,16 +885,17 @@ function renderCharts(){
       +'<button onclick="setRange(\'recent\')" style="padding:3px 10px;border-radius:3px;border:1px solid '+(S.range==='recent'?'#60a5fa':'#162233')+';background:'+(S.range==='recent'?'#60a5fa22':'transparent')+';color:'+(S.range==='recent'?'#60a5fa':'#5a7394')+'">近期</button>'
       +'<button onclick="setRange(\'all\')" style="padding:3px 10px;border-radius:3px;border:1px solid '+(S.range==='all'?'#60a5fa':'#162233')+';background:'+(S.range==='all'?'#60a5fa22':'transparent')+';color:'+(S.range==='all'?'#60a5fa':'#5a7394')+'">全歷史</button>'
     +'</span>'
-    +'<span style="margin-left:auto;font-size:11px;color:#2d4156">'+S.data.length+'根K棒 · 顯示'+candles.length+'根</span>'
+    +'<button onclick="zoomLevel=1.0;panOffset=0;chartH=300;renderCharts()" style="padding:2px 8px;border:1px solid #162233;background:transparent;color:#3d5470;margin-left:4px" title="重置縮放">⊡</button>'
+    +'<span style="margin-left:auto;font-size:11px;color:#2d4156">'+S.data.length+'根K棒 · 顯示'+candles.length+'根 · 縮放'+Math.round(zoomLevel*100)+'%</span>'
     +'</div>';
   let html=tabBar;
   if(S.tab==='chart'){
     html+='<div style="display:flex;gap:10px;margin-bottom:4px;font-size:10px;color:#2d4156;flex-wrap:wrap">'
-      +'<span style="color:#f59e0b">── MA200</span><span style="color:#38bdf8">-- MA50</span>'
+      +'<span style="color:#38bdf8">-- EMA100</span><span style="color:#f59e0b">── EMA200</span><span style="color:#a78bfa">-- EMA300</span><span style="color:#ef4444">-- EMA500</span>'
       +'<span style="color:#60a5fa">-- BB(20,2)</span><span style="color:#6366f1">── BB中軌</span>'
       +'<span style="color:#9333ea">-- POC</span><span style="color:#f59e0b">▲ 形態信號</span>'
       +'</div>'
-      +'<div style="background:#000000;border-radius:7px;margin-bottom:5px;padding:5px 0 2px">'+svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,300)+'</div>'
+      +'<div id="candle-wrap" style="background:#000000;border-radius:7px;margin-bottom:5px;padding:5px 0 2px;overflow:hidden">'+svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,chartH,d.emas)+'</div>'
       +'<div class="cbox"><div class="clbl">成交量 Volume</div>'+svgVol(sub,chartW,58)+'</div>'
       +'<div class="cbox"><div class="clbl">MACD(12,26,9) <span style="color:#60a5fa">── MACD</span><span style="color:#f97316">── Signal</span></div>'+svgMACD(sub,chartW,90)+'</div>'
       +'<div class="cbox"><div class="clbl">RSI(14) <span style="color:#a78bfa">── 快線</span> <span style="color:#f97316">-- 慢線(MA9)</span> <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>'+svgRSI(sub,chartW,90)+'</div>';
@@ -889,8 +990,16 @@ function renderPanel(){
   const rows=[
     {l:'RSI(14)',v:r!=null?r.toFixed(1):null,s:r==null?'N/A':r<30?'超賣🟢':r>70?'超買🔴':'中性',c:r<30?'#22c55e':r>70?'#ef4444':'#5a7394'},
     {l:'MACD訊號',v:null,s:ml==null?'計算中':ml>ms?'黃金交叉↑':'死亡交叉↓',c:ml>ms?'#22c55e':'#ef4444'},
-    {l:'MA200',v:m2?fp(m2):'資料不足',s:m2?abv?'站上(多)':'跌破(空)':'—',c:abv?'#22c55e':m2?'#ef4444':'#2d4156'},
-    {l:'MA50',v:m5?fp(m5):'—',s:m5?px>m5?'站上':'跌破':'N/A',c:m5&&px>m5?'#22c55e':'#ef4444'},
+    {l:'EMA100',v:S.emas[100]?fp(S.emas[100][S.emas[100].length-1]):'—',
+      s:S.emas[100]&&S.emas[100][S.emas[100].length-1]!=null?(px>S.emas[100][S.emas[100].length-1]?'站上':'跌破'):'N/A',
+      c:S.emas[100]&&S.emas[100][S.emas[100].length-1]!=null&&px>S.emas[100][S.emas[100].length-1]?'#22c55e':'#ef4444'},
+    {l:'EMA200',v:m2?fp(m2):'資料不足',s:m2?abv?'站上(多)':'跌破(空)':'—',c:abv?'#22c55e':m2?'#ef4444':'#2d4156'},
+    {l:'EMA300',v:S.emas[300]?fp(S.emas[300][S.emas[300].length-1]):'—',
+      s:S.emas[300]&&S.emas[300][S.emas[300].length-1]!=null?(px>S.emas[300][S.emas[300].length-1]?'站上':'跌破'):'N/A',
+      c:S.emas[300]&&S.emas[300][S.emas[300].length-1]!=null&&px>S.emas[300][S.emas[300].length-1]?'#22c55e':'#ef4444'},
+    {l:'EMA500',v:S.emas[500]?fp(S.emas[500][S.emas[500].length-1]):'—',
+      s:S.emas[500]&&S.emas[500][S.emas[500].length-1]!=null?(px>S.emas[500][S.emas[500].length-1]?'站上':'跌破'):'N/A',
+      c:S.emas[500]&&S.emas[500][S.emas[500].length-1]!=null&&px>S.emas[500][S.emas[500].length-1]?'#22c55e':'#ef4444'},
     {l:'BB上軌',v:bbu?fp(bbu):'—',s:bbu?px>bbu?'已突破':'正常':'—',c:px>bbu?'#f59e0b':'#5a7394'},
     {l:'BB下軌',v:bbl?fp(bbl):'—',s:bbl?px<bbl?'已跌破':'正常':'—',c:px<bbl?'#ef4444':'#5a7394'},
     {l:'POC',v:S.poc?fp(S.poc):'—',s:S.poc?px>S.poc?'高於POC':'低於POC':'—',c:S.poc&&px>S.poc?'#22c55e':'#ef4444'},
@@ -947,7 +1056,7 @@ function renderPanel(){
 async function fetchData(){
   S.loading=true;S.error=null;renderAll();
   try{
-    const ex=EX[S.ex],sym=ex.sym(S.coin),n=S.ex==='binance'?1000:({'1D':300,'4H':300,'1H':300,'15M':300}[S.tf]);
+    const ex=EX[S.ex],sym=ex.sym(S.coin),n=S.ex==='binance'?1000:({'3M':100,'1M':300,'1W':300,'1D':300,'4H':300,'1H':300,'15M':300}[S.tf]);
     const data=await ex.get(sym,S.tf,n);
     if(!data||data.length<30)throw new Error('資料不足，請稍後重試');
     S.data=data;compute();S.updated=new Date().toLocaleTimeString();
@@ -975,7 +1084,7 @@ function resetCfg(){
   Object.assign(CFG,{atr_period:14,atr_sl_mult:1.5,atr_tp_mult:3.0,atr_trail_mult:2.0,
     rsi_period:14,rsi_slow_period:9,rsi_oversold:30,rsi_overbought:70,rsi_engulf_max:55,
     rsi_macd_lo:45,rsi_macd_hi:72,rsi_bb_lo:55,rsi_bb_hi:78,
-    vol_lookback:10,vol_surge_mult:1.4,ma200_period:200,ma50_period:50,ma200_proximity:0.015,
+    vol_lookback:10,vol_surge_mult:1.4,ema_periods:[100,200,300,500],ma200_proximity:0.015,
     bb_period:20,bb_mult:2,macd_fast:12,macd_slow:26,macd_signal:9,
     poc_lookback:60,poc_bins:50,hammer_shadow_ratio:2.5,hammer_wick_ratio:0.4,
     engulf_tolerance:1.003,tws_gap_pct:0.006,min_signal_score:4,
@@ -984,10 +1093,43 @@ function resetCfg(){
 }
 window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(()=>renderAll(),200);});
 
+// ── Chart zoom & pan ──
+let isDragging=false,dragStartX=0,dragStartOffset=0;
+document.addEventListener('wheel',function(e){
+  const wrap=document.getElementById('candle-wrap');
+  if(!wrap||!wrap.contains(e.target))return;
+  e.preventDefault();
+  const delta=e.deltaY>0?-0.15:0.15;
+  zoomLevel=Math.max(0.3,Math.min(5.0,zoomLevel+delta));
+  // Adjust chartH based on zoom
+  chartH=Math.max(200,Math.min(800,Math.round(300*zoomLevel)));
+  renderCharts();
+},{passive:false});
+
+document.addEventListener('mousedown',function(e){
+  const wrap=document.getElementById('candle-wrap');
+  if(!wrap||!wrap.contains(e.target))return;
+  isDragging=true;dragStartX=e.clientX;dragStartOffset=panOffset;
+  wrap.style.cursor='grabbing';
+});
+document.addEventListener('mousemove',function(e){
+  if(!isDragging)return;
+  const dx=e.clientX-dragStartX;
+  panOffset=dragStartOffset+Math.round(dx/3);
+  renderCharts();
+});
+document.addEventListener('mouseup',function(){
+  if(!isDragging)return;
+  isDragging=false;
+  const wrap=document.getElementById('candle-wrap');
+  if(wrap)wrap.style.cursor='grab';
+});
+
 // Init
 renderHdr();renderCharts();renderPanel();
 fetchData();
 fetchTop100();
+startAutoScan();
 
 // Config display helper
 function showConfig(){
