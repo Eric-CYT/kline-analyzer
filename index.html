@@ -2,1823 +2,352 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>▣ 加密貨幣 K線分析系統</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>K線分析系統</title>
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#080d14;--card:#0c1420;--bd:#162233;--dim:#3d5470;--mid:#5a7394;
-  --text:#dde8f5;--g:#22c55e;--r:#ef4444;--bl:#60a5fa;--am:#f59e0b;--pu:#a78bfa;--or:#f97316}
-body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;font-size:14px;
-  display:flex;flex-direction:column;height:100vh;overflow:hidden}
-button{cursor:pointer;font-family:'Courier New',monospace;font-size:12px;border-radius:3px;padding:2px 8px;transition:all .15s}
-#hdr{background:var(--card);border-bottom:1px solid var(--bd);padding:6px 12px;
-  display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex-shrink:0}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#080d14;--card:#0c1420;--bd:#162233;--dim:#3d5470;--mid:#5a7394;--text:#dde8f5;--g:#22c55e;--r:#ef4444;--bl:#60a5fa;--am:#f59e0b;--pu:#a78bfa;--or:#f97316}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;font-size:14px;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+button{cursor:pointer;font-family:'Courier New',monospace;font-size:12px;border-radius:3px;padding:2px 8px}
+#hdr{background:var(--card);border-bottom:1px solid var(--bd);padding:6px 12px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex-shrink:0}
 .logo{color:var(--bl);font-weight:bold;font-size:15px;white-space:nowrap}
 .bgrp{display:flex;gap:3px;flex-wrap:wrap}
-#srch-wrap{position:relative;display:flex;align-items:center}
-#srch{background:#0a1628;border:1px solid var(--bd);border-radius:3px 0 0 3px;color:var(--text);
-  font-family:'Courier New',monospace;font-size:13px;padding:4px 9px;width:165px;outline:none;transition:border-color .15s}
+#srch{background:#0a1628;border:1px solid var(--bd);border-radius:3px;color:var(--text);font-family:monospace;font-size:13px;padding:4px 9px;width:160px;outline:none}
 #srch:focus{border-color:var(--bl)}
-#srch-go{background:#0a1628;border:1px solid var(--bd);border-left:none;border-radius:0 3px 3px 0;color:var(--mid);padding:4px 8px;font-size:12px}
-#srch-go:hover{color:var(--bl)}
-#srch-clear{position:absolute;right:36px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--dim);font-size:12px;padding:0 4px;display:none}
-#dd{display:none;position:absolute;top:calc(100% + 4px);left:0;background:#0d1b2e;border:1px solid var(--bd);
-  border-radius:5px;min-width:200px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.6);overflow:hidden}
-.ddi{display:flex;align-items:center;gap:6px;padding:7px 11px;cursor:pointer;font-size:13px;border-bottom:1px solid #0d1b2e;transition:background .1s}
-.ddi:hover{background:#182d45}.ddi:last-child{border-bottom:none}
-#refresh{border:1px solid var(--bd);background:transparent;color:var(--text)}
-#refresh:hover{border-color:var(--bl);color:var(--bl)}
-#stats-bar{width:100%;display:flex;gap:12px;font-size:12px;padding:2px 0 0;
-  border-top:1px solid var(--bd);margin-top:3px;flex-wrap:wrap;align-items:center}
-#err{display:none;background:#2d0a0a;border:1px solid var(--r);border-radius:6px;
-  margin:5px 8px;padding:7px 12px;justify-content:space-between;align-items:center;flex-shrink:0;gap:10px}
+#stats{width:100%;display:flex;gap:12px;font-size:12px;padding:2px 0 0;border-top:1px solid var(--bd);margin-top:3px;flex-wrap:wrap;align-items:center}
+#err{display:none;background:#2d0a0a;border:1px solid var(--r);border-radius:6px;margin:5px 8px;padding:7px 12px;justify-content:space-between;align-items:center;flex-shrink:0}
 #loading{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:12px}
 .spin{font-size:28px;animation:rot 1s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
-/* ── Sidebar ── */
-#sidebar{width:190px;background:#090e1a;border-right:1px solid var(--bd);
-  display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
-#sb-hdr{display:flex;align-items:stretch;border-bottom:1px solid var(--bd);flex-shrink:0}
-#sb-tabs{display:flex;flex:1}
-.sb-tab{flex:1;padding:7px 2px;border:none;background:transparent;color:var(--mid);font-size:11px;
-  cursor:pointer;border-bottom:2px solid transparent;font-family:'Courier New',monospace;transition:all .15s}
+#sidebar{width:190px;background:#090e1a;border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sb-tab{flex:1;padding:7px 2px;border:none;background:transparent;color:var(--mid);font-size:11px;cursor:pointer;border-bottom:2px solid transparent;font-family:monospace}
 .sb-tab.on{color:var(--bl);border-bottom-color:var(--bl);background:rgba(96,165,250,0.06)}
-#sb-rf{padding:6px 8px;border:none;background:transparent;color:var(--dim);
-  cursor:pointer;font-size:14px;border-left:1px solid var(--bd)}
-#sb-rf:hover{color:var(--bl)}
-#sb-filter{background:transparent;border:none;border-bottom:1px solid var(--bd);
-  color:var(--text);font-size:12px;padding:6px 9px;width:100%;outline:none;
-  font-family:'Courier New',monospace;flex-shrink:0;letter-spacing:.02em}
+#sb-filter{background:transparent;border:none;border-bottom:1px solid var(--bd);color:var(--text);font-size:12px;padding:6px 9px;width:100%;outline:none;font-family:monospace;flex-shrink:0}
 #coin-list{flex:1;overflow-y:auto}
-.ci{display:flex;align-items:center;padding:5px 6px;cursor:pointer;
-  border-bottom:1px solid #0d1825;gap:3px;transition:background .1s;user-select:none}
+.ci{display:flex;align-items:center;padding:5px 6px;cursor:pointer;border-bottom:1px solid #0d1825;gap:3px}
 .ci:hover{background:#111e30}
-.ci.active{background:#142845;border-left:2px solid var(--bl);padding-left:4px}
-.ci-rank{font-size:10px;color:var(--dim);min-width:16px;text-align:right;flex-shrink:0}
-.ci-mid{flex:1;min-width:0;overflow:hidden}
-.ci-sym{font-size:12px;font-weight:bold;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ci-price{font-size:10px;color:var(--dim);display:block}
-.ci-chg{font-size:10px;flex-shrink:0;min-width:38px;text-align:right}
-.ci-star{font-size:14px;color:var(--dim);flex-shrink:0;padding:0 2px;transition:color .15s;line-height:1}
-.ci-star:hover,.ci-star.on{color:var(--am)}
-/* ── Main area ── */
+.ci.active{background:#142845;border-left:2px solid var(--bl)}
 #main{display:flex;flex:1;overflow:hidden}
 #charts{flex:1;overflow-y:auto;padding:7px 5px 7px 7px}
-#candle-wrap{position:relative;cursor:grab;user-select:none;touch-action:none}
-.ind-bar{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px;align-items:center}
-.ind-tog{padding:2px 6px;border-radius:3px;border:1px solid #162233;background:transparent;
-  font-size:10px;cursor:pointer;font-family:'Courier New',monospace}
-.ind-tog.on{background:rgba(96,165,250,0.1);color:#60a5fa;border-color:#1e40af}
-.ind-tog.off{color:#1e2a3a;border-color:#0d1825}
 #panel{width:300px;background:var(--card);border-left:1px solid var(--bd);padding:10px;overflow-y:auto;flex-shrink:0}
 .cbox{background:var(--card);border-radius:7px;margin-bottom:5px;padding:4px 6px}
 .clbl{font-size:11px;color:var(--dim);margin-bottom:2px;display:flex;gap:10px;align-items:center}
 .tab-btn{padding:4px 14px;border-radius:4px;border:none;background:var(--bd);color:var(--mid);font-size:12px}
 .tab-btn.on{background:#1e40af;color:#fff}
 .prow{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--bd)}
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.tg{padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;font-size:10px;border:1px solid #0d1825;background:transparent;color:#1e2a3a}
+.tg.on{background:rgba(96,165,250,0.1);color:#60a5fa;border-color:#1e40af}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
 </style>
 </head>
 <body>
-
 <div id="hdr">
   <span class="logo">▣ K線分析</span>
   <div id="ex-btns" class="bgrp"></div>
-  <div id="srch-wrap">
-    <input id="srch" type="text" placeholder="🔍 USDT對搜尋 (PEPE...)"
-           autocomplete="off" spellcheck="false" maxlength="15"
-           oninput="onSrch(this.value)" onkeydown="onSrchKey(event)" onfocus="onSrchFocus()">
-    <button id="srch-clear" onclick="clearSrch()">✕</button>
-    <button id="srch-go" onclick="doSearch()">GO</button>
-    <div id="dd"></div>
-  </div>
+  <input id="srch" placeholder="🔍 USDT對搜尋 (PEPE)" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){var v=this.value.trim().toUpperCase().replace(/[-\/]?USDT$/,'');if(v){S.coin=v;fetchData()}}">
   <div id="coin-btns" class="bgrp"></div>
   <div id="tf-btns" class="bgrp"></div>
-  <button id="refresh" onclick="fetchData()">⟳ 刷新</button>
-  <div id="stats-bar"></div>
+  <button id="refresh" onclick="fetchData()" style="border:1px solid var(--bd);background:transparent;color:var(--text)">⟳ 刷新</button>
+  <div id="stats"></div>
 </div>
-
 <div id="err"></div>
-<div id="loading">
-  <div class="spin">⟳</div>
-  <div id="load-msg" style="color:var(--mid)"></div>
-</div>
-
+<div id="loading"><div class="spin">⟳</div><div id="load-msg" style="color:var(--mid)"></div></div>
 <div id="main">
-  <!-- Left Sidebar: Top 100 + Favorites -->
   <div id="sidebar">
-    <div id="sb-hdr">
-      <div id="sb-tabs">
-        <button id="sb-all" class="sb-tab on" onclick="setSideTab('all')">Top100</button>
-        <button id="sb-fav" class="sb-tab" onclick="setSideTab('fav')">★ 最愛</button>
-        <button id="sb-scan" class="sb-tab" onclick="setSideTab('scan')">🏆 推薦</button>
-      </div>
-      <button id="sb-rf" onclick="sideTab==='scan'?scanWinRates():fetchTop100()" title="刷新/掃描">⟳</button>
+    <div style="display:flex;border-bottom:1px solid var(--bd)">
+      <button id="stAll" class="sb-tab on" onclick="sideTab='all';renderSB()">Top100</button>
+      <button id="stFav" class="sb-tab" onclick="sideTab='fav';renderSB()">★ 最愛</button>
+      <button id="stScan" class="sb-tab" onclick="sideTab='scan';renderSB()">🏆 推薦</button>
+      <button onclick="sideTab==='scan'?scanWR():fetchTop100()" style="padding:6px 8px;border:none;background:transparent;color:var(--dim);cursor:pointer;font-size:14px;border-left:1px solid var(--bd)">⟳</button>
     </div>
-    <input id="sb-filter" placeholder="🔍 篩選幣種..." oninput="renderSidebar()">
-    <div id="coin-list">
-      <div style="text-align:center;padding:24px 10px;color:#2d4156">
-        <div style="font-size:22px;margin-bottom:8px">⟳</div>
-        <div style="font-size:10px">載入 Top 100…</div>
-      </div>
-    </div>
+    <input id="sb-filter" placeholder="🔍 篩選..." oninput="renderSB()">
+    <div id="coin-list"></div>
   </div>
-  <div id="charts"><div id="chart-content"></div></div>
-  <div id="panel"><div id="panel-content"></div></div>
+  <div id="charts"><div id="cc"></div></div>
+  <div id="panel"><div id="pc"></div></div>
 </div>
-
 <script>
-/* ══ CONFIG ═════════════════════════════════════════════ */
-const QUICK=['BTC','ETH','SOL','BNB','XRP','DOGE','ADA','AVAX','DOT','LINK','LTC','MATIC'];
-const ALL_PAIRS=['BTC','ETH','SOL','BNB','XRP','DOGE','ADA','AVAX','DOT','LINK','LTC','MATIC',
-  'UNI','AAVE','COMP','MKR','CRV','SNX','GMX','DYDX','ARB','OP','INJ','SUI','APT','SEI','TIA',
-  'NEAR','FIL','ATOM','ICP','EGLD','PEPE','WIF','BONK','FLOKI','SHIB','BOME','GRT','FET','OCEAN',
-  'RNDR','WLD','SAND','MANA','ENJ','IMX','JUP','PYTH','PENDLE','HBAR','VET','XLM','TRX','ORDI'];
-const TFS=['3M','1M','1W','1D','4H','1H','15M'];
-const STABLES=new Set(['USDT','USDC','BUSD','DAI','TUSD','USDP','USDD','FRAX','GUSD','LUSD','PYUSD','EURT','FDUSD']);
-
-const EX={
-  binance:{label:'Binance',color:'#F0B90B',sym:c=>c+'USDT',
-    async get(sym,tf,n){
-      const iv={'3M':'3M','1M':'1M','1W':'1w','1D':'1d','4H':'4h','1H':'1h','15M':'15m'}[tf];
-      const r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${iv}&limit=${n}`);
-      if(!r.ok)throw new Error(`Binance HTTP ${r.status}`);
-      const d=await r.json();if(!Array.isArray(d))throw new Error('Binance異常回應');
-      return d.map((k,i)=>({i,date:fd(+k[0]),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
-    }},
-  bybit:{label:'Bybit',color:'#F7A600',sym:c=>c+'USDT',
-    async get(sym,tf,n){
-      const iv={'3M':'M','1M':'M','1W':'W','1D':'D','4H':'240','1H':'60','15M':'15'}[tf];
-      const r=await fetch(`https://api.bybit.com/v5/market/kline?category=linear&symbol=${sym}&interval=${iv}&limit=${n}`);
-      if(!r.ok)throw new Error(`Bybit HTTP ${r.status}`);
-      const d=await r.json();if(d.retCode!==0)throw new Error(`Bybit: ${d.retMsg}`);
-      return d.result.list.slice().reverse().map((k,i)=>({i,date:fd(+k[0]),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
-    }},
-  okx:{label:'OKX',color:'#00C2FF',sym:c=>c+'-USDT',
-    async get(sym,tf,n){
-      const iv={'3M':'3M','1M':'1M','1W':'1W','1D':'1D','4H':'4H','1H':'1H','15M':'15m'}[tf];
-      const r=await fetch(`https://www.okx.com/api/v5/market/candles?instId=${sym}&bar=${iv}&limit=${n}`);
-      if(!r.ok)throw new Error(`OKX HTTP ${r.status}`);
-      const d=await r.json();if(d.code!=='0')throw new Error(`OKX: ${d.msg}`);
-      return d.data.slice().reverse().map((k,i)=>({i,date:fd(+k[0]),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
-    }}
+/* ═══ CONFIG ═══ */
+var CFG={atr_period:14,atr_sl_mult:1.5,atr_tp_mult:3.0,atr_trail_mult:2.0,rsi_period:14,rsi_slow_period:9,rsi_oversold:30,rsi_overbought:70,rsi_engulf_max:55,rsi_macd_lo:45,rsi_macd_hi:72,rsi_bb_lo:55,rsi_bb_hi:78,vol_lookback:10,vol_surge_mult:1.4,ema_periods:[100,200,300,500],ma200_proximity:0.015,bb_period:20,bb_mult:2,macd_fast:12,macd_slow:26,macd_signal:9,poc_lookback:60,poc_bins:50,hammer_shadow_ratio:2.5,hammer_wick_ratio:0.4,engulf_tolerance:1.003,tws_gap_pct:0.006,min_signal_score:4,entry_mode:'next_open',exit_mode:'trailing',max_hold_bars:120,fixed_hold_bars:30};
+var COINS=['BTC','ETH','SOL','BNB','XRP','DOGE','ADA','AVAX','DOT','LINK','LTC','MATIC'];
+var TFS=['3M','1M','1W','1D','4H','1H','15M'];
+var STABLES=new Set(['USDT','USDC','BUSD','DAI','TUSD','FDUSD']);
+var FALLBACK=[[1,'BTC'],[2,'ETH'],[3,'BNB'],[4,'SOL'],[5,'XRP'],[6,'DOGE'],[7,'ADA'],[8,'AVAX'],[9,'SHIB'],[10,'DOT'],[11,'LINK'],[12,'MATIC'],[13,'LTC'],[14,'UNI'],[15,'ATOM'],[16,'XLM'],[17,'APT'],[18,'OP'],[19,'ARB'],[20,'NEAR'],[21,'FIL'],[22,'SUI'],[23,'INJ'],[24,'TIA'],[25,'PEPE'],[26,'BONK'],[27,'WIF'],[28,'FLOKI'],[29,'ORDI'],[30,'AAVE'],[31,'GRT'],[32,'SAND'],[33,'MANA'],[34,'CRV'],[35,'MKR'],[36,'COMP'],[37,'GMX'],[38,'DYDX'],[39,'IMX'],[40,'RNDR'],[41,'FET'],[42,'WLD'],[43,'JUP'],[44,'PYTH'],[45,'PENDLE'],[46,'SEI'],[47,'HBAR'],[48,'VET'],[49,'RUNE'],[50,'THETA']].map(function(x){return{rank:x[0],symbol:x[1],name:x[1],price:0,change24h:0}});
+/* ═══ EXCHANGES ═══ */
+var EX={
+  binance:{label:'Binance',color:'#F0B90B',sym:function(c){return c+'USDT'},
+    get:function(sym,tf,n){var iv={'3M':'3M','1M':'1M','1W':'1w','1D':'1d','4H':'4h','1H':'1h','15M':'15m'}[tf];
+      return fetch('https://api.binance.com/api/v3/klines?symbol='+sym+'&interval='+iv+'&limit='+n).then(function(r){if(!r.ok)throw new Error('Binance HTTP '+r.status);return r.json()}).then(function(d){if(!Array.isArray(d))throw new Error('Bad data');return d.map(function(k,i){return{i:i,date:fd(+k[0]),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}})})}},
+  bybit:{label:'Bybit',color:'#F7A600',sym:function(c){return c+'USDT'},
+    get:function(sym,tf,n){var iv={'3M':'M','1M':'M','1W':'W','1D':'D','4H':'240','1H':'60','15M':'15'}[tf];
+      return fetch('https://api.bybit.com/v5/market/kline?category=linear&symbol='+sym+'&interval='+iv+'&limit='+n).then(function(r){if(!r.ok)throw new Error('Bybit HTTP '+r.status);return r.json()}).then(function(d){if(d.retCode!==0)throw new Error('Bybit: '+d.retMsg);return d.result.list.slice().reverse().map(function(k,i){return{i:i,date:fd(+k[0]),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}})})}},
+  okx:{label:'OKX',color:'#00C2FF',sym:function(c){return c+'-USDT'},
+    get:function(sym,tf,n){var iv={'3M':'3M','1M':'1M','1W':'1W','1D':'1D','4H':'4H','1H':'1H','15M':'15m'}[tf];
+      return fetch('https://www.okx.com/api/v5/market/candles?instId='+sym+'&bar='+iv+'&limit='+n).then(function(r){if(!r.ok)throw new Error('OKX HTTP '+r.status);return r.json()}).then(function(d){if(d.code!=='0')throw new Error('OKX: '+d.msg);return d.data.slice().reverse().map(function(k,i){return{i:i,date:fd(+k[0]),open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}})})}},
 };
-
-/* ══ STATE ══════════════════════════════════════════════ */
-const S={ex:'binance',coin:'BTC',tf:'1D',range:'recent',data:[],loading:false,error:null,tab:'chart',updated:null,
-  cl:[],vl:[],macd:{line:[],sig:[],hist:[]},rsi:[],rsiSlow:[],atrA:[],ma200:[],ma50:[],emas:{},bb:{up:[],mid:[],lo:[]},poc:null,sigs:[],btR:[],riskA:[],entryMarkers:[],exitMarkers:[]};
-let sideTab='all';
-let top100=[];
-let sbLoading=true;
-let scanResults={};
-let scanRunning=false;
-let scanTimer=null;
-let lastScanTime=null;
-let favs=JSON.parse(localStorage.getItem('kl_favs')||'[]');
-let recent=JSON.parse(sessionStorage.getItem('kl_rec')||'[]');
-function addRecent(c){recent=[c,...recent.filter(x=>x!==c)].slice(0,6);sessionStorage.setItem('kl_rec',JSON.stringify(recent));}
-
-/* ══ FALLBACK TOP50 ═════════════════════════════════════ */
-const FALLBACK=[[1,'BTC','Bitcoin'],[2,'ETH','Ethereum'],[3,'BNB','BNB'],[4,'SOL','Solana'],
-  [5,'XRP','XRP'],[6,'DOGE','Dogecoin'],[7,'ADA','Cardano'],[8,'AVAX','Avalanche'],
-  [9,'SHIB','Shiba Inu'],[10,'DOT','Polkadot'],[11,'LINK','Chainlink'],[12,'MATIC','Polygon'],
-  [13,'LTC','Litecoin'],[14,'UNI','Uniswap'],[15,'ATOM','Cosmos'],[16,'XLM','Stellar'],
-  [17,'ETC','Ethereum Classic'],[18,'APT','Aptos'],[19,'OP','Optimism'],[20,'ARB','Arbitrum'],
-  [21,'NEAR','NEAR Protocol'],[22,'FIL','Filecoin'],[23,'SUI','Sui'],[24,'INJ','Injective'],
-  [25,'TIA','Celestia'],[26,'PEPE','Pepe'],[27,'BONK','Bonk'],[28,'WIF','dogwifhat'],
-  [29,'FLOKI','FLOKI'],[30,'ORDI','ORDI'],[31,'AAVE','Aave'],[32,'GRT','The Graph'],
-  [33,'SAND','The Sandbox'],[34,'MANA','Decentraland'],[35,'CRV','Curve DAO'],
-  [36,'MKR','Maker'],[37,'SNX','Synthetix'],[38,'COMP','Compound'],[39,'GMX','GMX'],
-  [40,'DYDX','dYdX'],[41,'IMX','ImmutableX'],[42,'RNDR','Render'],[43,'FET','Fetch.ai'],
-  [44,'WLD','Worldcoin'],[45,'JUP','Jupiter'],[46,'PYTH','Pyth Network'],
-  [47,'PENDLE','Pendle'],[48,'SEI','Sei'],[49,'HBAR','Hedera'],[50,'VET','VeChain'],
-  [51,'RUNE','THORChain'],[52,'THETA','Theta'],[53,'CHZ','Chiliz'],[54,'GALA','Gala'],
-  [55,'AXS','Axie Infinity'],[56,'ENJ','Enjin'],[57,'ROSE','Oasis'],[58,'ZIL','Zilliqa'],
-  [59,'FTM','Fantom'],[60,'ONE','Harmony'],[61,'KAVA','Kava'],[62,'CELO','Celo'],
-  [63,'STORJ','Storj'],[64,'OCEAN','Ocean Protocol'],[65,'BAT','Basic Attention'],
-  [66,'ZRX','0x Protocol'],[67,'LRC','Loopring'],[68,'SKL','SKALE'],
-  [69,'MASK','Mask Network'],[70,'DUSK','Dusk Network'],
-].map(([rank,symbol,name])=>({rank,symbol,name,price:0,change24h:0}));
-
-/* ══ SEARCH ═════════════════════════════════════════════ */
-let ddIdx=-1;
-function onSrch(val){
-  document.getElementById('srch-clear').style.display=val?'block':'none';
-  val=val.trim().toUpperCase();
-  if(!val){showDd([...new Set([...recent,...POPULAR])].slice(0,8),'');return;}
-  const m=ALL_PAIRS.filter(c=>c.startsWith(val)||c.includes(val)).slice(0,7);
-  if(!m.includes(val)&&val.length>=2)m.push(val);
-  showDd(m.slice(0,8),val);
-}
-const POPULAR=['BTC','ETH','SOL','XRP','DOGE','PEPE','WIF','ARB','RNDR','INJ'];
-function showDd(items,q){
-  const dd=document.getElementById('dd');ddIdx=-1;
-  if(!items.length){dd.style.display='none';return;}
-  dd.innerHTML=items.map((c,i)=>{
-    const isRec=recent.includes(c),isNew=!ALL_PAIRS.includes(c);
-    const hi=q&&c.startsWith(q)?`<b style="color:var(--bl)">${c.slice(0,q.length)}</b>${c.slice(q.length)}`:c;
-    return`<div class="ddi" id="ddi${i}" onclick="pickCoin('${c}')">
-      <span style="font-size:9px;width:14px">${isRec?'🕐':isNew?'✦':''}</span>
-      <span>${hi}</span><span style="color:var(--mid);font-size:10px">/USDT</span>
-      ${isNew?'<span style="color:var(--am);font-size:9px;margin-left:auto">自定義</span>':''}
-    </div>`;
-  }).join('');
-  dd.style.display='block';
-}
-function hideDd(){document.getElementById('dd').style.display='none';ddIdx=-1;}
-function onSrchFocus(){
-  const v=document.getElementById('srch').value.trim().toUpperCase();
-  const items=v?ALL_PAIRS.filter(c=>c.startsWith(v)||c.includes(v)).slice(0,8)
-              :[...new Set([...recent,...POPULAR])].slice(0,8);
-  showDd(items,v);
-}
-function onSrchKey(e){
-  const items=document.querySelectorAll('.ddi');
-  if(e.key==='ArrowDown'){e.preventDefault();ddIdx=Math.min(ddIdx+1,items.length-1);items.forEach((el,i)=>el.style.background=i===ddIdx?'#182d45':'');return;}
-  if(e.key==='ArrowUp'){e.preventDefault();ddIdx=Math.max(ddIdx-1,-1);items.forEach((el,i)=>el.style.background=i===ddIdx?'#182d45':'');return;}
-  if(e.key==='Escape'){hideDd();return;}
-  if(e.key==='Enter'){e.preventDefault();if(ddIdx>=0&&items[ddIdx]){items[ddIdx].click();return;}doSearch();}
-}
-function pickCoin(c){
-  if(QUICK.includes(c)){document.getElementById('srch').value='';document.getElementById('srch-clear').style.display='none';}
-  else{document.getElementById('srch').value=c;document.getElementById('srch-clear').style.display='block';}
-  hideDd();S.coin=c;addRecent(c);fetchData();
-}
-function doSearch(){
-  let v=document.getElementById('srch').value.trim().toUpperCase();
-  if(!v)return;
-  // Normalize: strip USDT/-USDT suffix, reject other quote pairs
-  v=v.replace(/[-\/]?USDT$/,'');
-  if(/(BTC|ETH|BNB|BUSD|USDC|EUR|TRY|DAI)$/.test(v)&&v.length>4){
-    S.error='僅支援 USDT 交易對，請只輸入幣種代號（如 PEPE）';renderErr();return;}
-  if(!/^[A-Z0-9]{1,12}$/.test(v)){
-    S.error='代號格式錯誤，僅接受英數字（如 BTC、PEPE、1000SATS）';renderErr();return;}
-  hideDd();S.coin=v;addRecent(v);fetchData();
-}
-function clearSrch(){
-  document.getElementById('srch').value='';document.getElementById('srch-clear').style.display='none';
-  hideDd();document.getElementById('srch').focus();
-}
-document.addEventListener('keydown',e=>{
-  if(e.key==='/'&&document.activeElement!==document.getElementById('srch')){
-    e.preventDefault();document.getElementById('srch').focus();onSrchFocus();}
-});
-document.addEventListener('click',e=>{if(!document.getElementById('srch-wrap').contains(e.target))hideDd();});
-
-/* ══ UTILS ══════════════════════════════════════════════ */
-const fd=ts=>{const d=new Date(ts);return`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;};
-const fp=v=>{if(v==null)return'-';const a=Math.abs(v);
-  if(a>=100000)return(v/1000).toFixed(0)+'K';if(a>=10000)return v.toFixed(0);
-  if(a>=100)return v.toFixed(2);return v.toFixed(4);};
-const fpS=v=>{if(!v)return'-';const a=Math.abs(v);
-  if(a>=10000)return(v/1000).toFixed(0)+'K';if(a>=100)return v.toFixed(0);
-  if(a>=1)return v.toFixed(2);if(a>=0.0001)return v.toFixed(4);return v.toExponential(2);};
-
-/* ══ GLOBAL CONFIG (Optimization #4) ═════════════════════ */
-const CFG = {
-  // ── ATR ──
-  atr_period: 14,        // ATR lookback period
-  atr_sl_mult: 1.5,      // N: stop-loss = entry - N*ATR
-  atr_tp_mult: 3.0,      // M: take-profit = entry + M*ATR
-  atr_trail_mult: 2.0,   // trailing stop distance = T*ATR
-
-  // ── RSI ──
-  rsi_period: 14,
-  rsi_slow_period: 9,     // RSI moving average ("slow line")
-  rsi_oversold: 30,
-  rsi_overbought: 70,
-  rsi_engulf_max: 55,     // max RSI for engulfing pattern
-  rsi_macd_lo: 45,        // MACD golden cross RSI range
-  rsi_macd_hi: 72,
-  rsi_bb_lo: 55,          // BB breakout RSI range
-  rsi_bb_hi: 78,
-
-  // ── Volume ──
-  vol_lookback: 10,       // volume MA lookback
-  vol_surge_mult: 1.4,    // volume surge multiplier
-
-  // ── MA ──
-  ema_periods: [100, 200, 300, 500],
-  ma200_proximity: 0.015, // 1.5% proximity threshold
-
-  // ── Bollinger Bands ──
-  bb_period: 20,
-  bb_mult: 2,
-
-  // ── MACD ──
-  macd_fast: 12,
-  macd_slow: 26,
-  macd_signal: 9,
-
-  // ── POC ──
-  poc_lookback: 60,
-  poc_bins: 50,
-
-  // ── Candlestick thresholds ──
-  hammer_shadow_ratio: 2.5,  // lower shadow >= N * body
-  hammer_wick_ratio: 0.4,    // upper wick < N * body
-  engulf_tolerance: 1.003,   // open <= prev_close * N
-  tws_gap_pct: 0.006,        // three white soldiers gap tolerance
-
-  // ── Signal trigger ──
-  min_signal_score: 4,
-
-  // ── Backtest ──
-  entry_mode: 'next_open',   // 'close' or 'next_open'
-  exit_mode: 'trailing',     // 'fixed_bars' or 'trailing'
-  max_hold_bars: 120,        // safety max hold (for trailing mode)
-  fixed_hold_bars: 30,       // for fixed_bars mode
-};
-
-/* ══ MATH (Upgraded) ════════════════════════════════════ */
-const _ema=(arr,p)=>{const k=2/(p+1);const res=[];let e=null;
-  for(let i=0;i<arr.length;i++){if(arr[i]==null){res.push(null);continue;}
-    if(e===null){if(i<p-1){res.push(null);continue;}e=arr.slice(i-p+1,i+1).reduce((a,b)=>a+b)/p;}
-    else e=arr[i]*k+e*(1-k);res.push(+e.toFixed(8));}return res;};
-const _sma=(arr,p)=>arr.map((_,i)=>i<p-1?null:+(arr.slice(i-p+1,i+1).reduce((a,b)=>a+b)/p).toFixed(6));
-
-const _macd=cl=>{
-  const l12=_ema(cl,CFG.macd_fast),l26=_ema(cl,CFG.macd_slow);
-  const line=l12.map((v,i)=>v!=null&&l26[i]!=null?+(v-l26[i]).toFixed(8):null);
-  const sig=_ema(line.map(v=>v??0),CFG.macd_signal);
-  return{line,sig,hist:line.map((v,i)=>v!=null&&sig[i]!=null?+(v-sig[i]).toFixed(8):null)};};
-
-// ── Optimization #2: RSI + RSI slow line ──
-const _rsi=(cl,p)=>{
-  p=p||CFG.rsi_period;
-  return cl.map((_,i)=>{if(i<p)return null;let g=0,l=0;
-    for(let j=i-p+1;j<=i;j++){const d=cl[j]-cl[j-1];d>0?g+=d:l-=d;}
-    const ag=g/p,al=l/p;return al===0?100:+(100-100/(1+ag/al)).toFixed(2);});};
-const _rsiSlow=(rsiArr)=>_sma(rsiArr.map(v=>v??50), CFG.rsi_slow_period);
-
-// ── Optimization #1: ATR calculation ──
-const _atr=(D,p)=>{
-  p=p||CFG.atr_period;
-  const tr=D.map((c,i)=>{
-    if(i===0) return c.high-c.low;
-    const prev=D[i-1].close;
-    return Math.max(c.high-c.low, Math.abs(c.high-prev), Math.abs(c.low-prev));
-  });
-  // Use Wilder's smoothing (RMA)
-  const res=[];
-  for(let i=0;i<tr.length;i++){
-    if(i<p-1){res.push(null);continue;}
-    if(i===p-1){res.push(tr.slice(0,p).reduce((a,b)=>a+b)/p);continue;}
-    res.push(+(res[i-1]*(p-1)/p + tr[i]/p).toFixed(8));
-  }
-  return res;
-};
-
-const _bb=(cl,p,m)=>{
-  p=p||CFG.bb_period;m=m||CFG.bb_mult;
-  const mid=_sma(cl,p);const up=[],lo=[];
-  cl.forEach((_,i)=>{if(i<p-1){up.push(null);lo.push(null);return;}
-    const sl=cl.slice(i-p+1,i+1),mn=mid[i];
-    const sd=Math.sqrt(sl.reduce((s,v)=>s+(v-mn)**2,0)/p);
-    up.push(+(mn+m*sd).toFixed(6));lo.push(+(mn-m*sd).toFixed(6));});return{up,mid,lo};};
-
-const _poc=(D,look)=>{
-  look=look||CFG.poc_lookback;
-  const rc=D.slice(-look);
-  const all=rc.flatMap(c=>[c.high,c.low]);const mn=Math.min(...all),mx=Math.max(...all);
-  const step=(mx-mn)/CFG.poc_bins||0.01;const map={};
-  rc.forEach(c=>{const lv=Math.max(1,Math.round((c.high-c.low)/step));
-    for(let l=0;l<=lv;l++){const p=+(c.low+l*step).toFixed(6);map[p]=(map[p]||0)+c.volume/(lv+1);}});
-  let mv=0,poc=mn;Object.entries(map).forEach(([p,v])=>{if(v>mv){mv=v;poc=+p;}});return poc;};
-
-/* ══ SIGNALS (Upgraded: ATR TP/SL + RSI crossover) ══════ */
-function detectSignals(){
-  const{data:D,rsi:rsiA,rsiSlow:rsiSlowA,macd:macdO,ma200:ma200A,bb:bbO,vl:volA,atrA}=S;
-  const out=[];
-
-  for(let i=Math.max(15,CFG.atr_period);i<D.length-1;i++){
-    const c=D[i],p=D[i-1],body=Math.abs(c.close-c.open),bull=c.close>=c.open;
-    const lw=Math.min(c.open,c.close)-c.low,uw=c.high-Math.max(c.open,c.close);
-
-    // Volume surge (parameterized)
-    const avVol=volA.slice(Math.max(0,i-CFG.vol_lookback),i).reduce((a,b)=>a+b,0)/CFG.vol_lookback||1;
-    const vs=c.volume>avVol*CFG.vol_surge_mult;
-
-    // MA200 conditions (parameterized proximity)
-    const a200=ma200A[i]!=null&&c.close>ma200A[i];
-    const n200=ma200A[i]!=null&&Math.abs(c.low-ma200A[i])/ma200A[i]<CFG.ma200_proximity;
-
-    // RSI values + crossover check (Optimization #2)
-    const r=rsiA[i],r1=rsiA[i-1];
-    const rSlow=rsiSlowA[i],rSlowPrev=rsiSlowA[i-1];
-    const rsiAboveSlow=(r!=null&&rSlow!=null&&r>rSlow);       // RSI fast > slow
-    const rsiCrossUp=(r!=null&&rSlow!=null&&r1!=null&&rSlowPrev!=null&&r>rSlow&&r1<=rSlowPrev); // just crossed
-
-    const{line:ml,sig:ms,hist:mh}=macdO;
-    const atr=atrA[i];
-    let hit=null;
-
-    // ─── 🔨 Power Hammer ───
-    if(bull&&lw>CFG.hammer_shadow_ratio*body&&uw<CFG.hammer_wick_ratio*body){
-      let s=2;const co=['下影線>='+CFG.hammer_shadow_ratio+'倍實體','看漲收盤'];
-      if(r!=null&&r<CFG.rsi_oversold+5){
-        if(rsiAboveSlow){co.push('RSI超賣回升('+r.toFixed(0)+') 快>慢線✓');s+=2;}
-        else{co.push('RSI超賣('+r.toFixed(0)+') 未過慢線');s+=1;}
-      }
-      if(bbO.lo[i]!=null&&c.low<=bbO.lo[i]){co.push('觸及布林下軌');s++;}
-      if(a200||n200){co.push('MA200支撐位');s++;}
-      if(vs){co.push('成交量放大x'+CFG.vol_surge_mult);s++;}
-      if(s>=CFG.min_signal_score) hit={n:'🔨 強力錘子線',co,s,ms:7};}
-
-    // ─── 🟢 Bullish Engulfing ───
-    if(!hit&&bull&&p.close<p.open&&c.open<=p.close*CFG.engulf_tolerance&&c.close>=p.open){
-      let s=2;const co=['看漲吞噬型態'];
-      if(r!=null&&r<CFG.rsi_engulf_max){
-        if(rsiAboveSlow){co.push('RSI('+r.toFixed(0)+') 快>慢線✓');s+=2;}
-        else{co.push('RSI('+r.toFixed(0)+')');s+=1;}
-      }
-      if(mh[i]!=null&&mh[i-1]!=null&&mh[i]>0&&mh[i-1]<0){co.push('MACD柱轉正');s+=2;}
-      if(a200){co.push('MA200多方');s++;}if(vs){co.push('成交量確認');s++;}
-      if(s>=CFG.min_signal_score) hit={n:'🟢 看漲吞噬',co,s,ms:7};}
-
-    // ─── 📈 MACD Golden Cross ───
-    if(!hit&&ml[i]!=null&&ms[i]!=null&&ml[i-1]!=null&&ms[i-1]!=null&&ml[i]>ms[i]&&ml[i-1]<=ms[i-1]){
-      let s=2;const co=['MACD黃金交叉'];
-      if(r!=null&&r>CFG.rsi_macd_lo&&r<CFG.rsi_macd_hi){
-        if(rsiAboveSlow){co.push('RSI動能('+r.toFixed(0)+') 快>慢線✓');s+=2;}
-        else{co.push('RSI動能('+r.toFixed(0)+')');s+=1;}
-      }
-      if(a200){co.push('MA200多頭趨勢');s+=2;}if(vs){co.push('成交量確認');s++;}
-      if(mh[i]!=null&&mh[i-1]!=null&&mh[i]>mh[i-1]){co.push('MACD柱擴張');s++;}
-      if(s>=CFG.min_signal_score) hit={n:'📈 MACD黃金交叉',co,s,ms:8};}
-
-    // ─── 🚀 BB Upper Breakout ───
-    if(!hit&&bbO.up[i]!=null&&bbO.up[i-1]!=null&&c.close>bbO.up[i]&&p.close<=bbO.up[i-1]){
-      let s=2;const co=['突破布林上軌'];
-      if(vs){co.push('成交量放大確認');s+=2;}
-      if(r!=null&&r>CFG.rsi_bb_lo&&r<CFG.rsi_bb_hi){
-        if(rsiAboveSlow){co.push('RSI強勢('+r.toFixed(0)+') 快>慢線✓');s+=2;}
-        else{co.push('RSI('+r.toFixed(0)+')');s+=1;}
-      }
-      if(a200){co.push('MA200多頭');s++;}if(mh[i]!=null&&mh[i]>0){co.push('MACD正區域');s++;}
-      if(s>=CFG.min_signal_score) hit={n:'🚀 布林上軌突破',co,s,ms:8};}
-
-    // ─── 🔄 RSI Oversold Bounce ───
-    if(!hit&&r1!=null&&r!=null&&r1<CFG.rsi_oversold&&r>CFG.rsi_oversold+2&&bull){
-      let s=2;const co=['RSI從超賣回升'];
-      if(rsiCrossUp){co.push('RSI快線上穿慢線✓');s+=2;}
-      else if(rsiAboveSlow){co.push('RSI快>慢線');s+=1;}
-      if(n200){co.push('MA200強力支撐');s+=2;}
-      if(bbO.lo[i-1]!=null&&p.low<=bbO.lo[i-1]){co.push('布林下軌彈升');s++;}
-      if(vs){co.push('成交量放大');s++;}
-      if(mh[i]!=null&&mh[i-1]!=null&&mh[i]>mh[i-1]){co.push('MACD動能回升');s++;}
-      if(s>=CFG.min_signal_score) hit={n:'🔄 RSI超賣反彈',co,s,ms:7};}
-
-    // ─── 🏛️ Three White Soldiers ───
-    if(!hit&&i>=2){const c0=D[i],c1=D[i-1],c2=D[i-2];
-      if(c0.close>c0.open&&c1.close>c1.open&&c2.close>c2.open&&
-         c0.close>c1.close&&c1.close>c2.close&&Math.abs(c0.open-c1.close)/c1.close<CFG.tws_gap_pct){
-        let s=3;const co=['三白兵型態'];
-        if(vs){co.push('量能持續放大');s++;}if(a200){co.push('MA200多方');s++;}
-        if(r!=null&&r<CFG.rsi_overbought){
-          if(rsiAboveSlow){co.push('RSI未超買('+r.toFixed(0)+') 快>慢線✓');s+=2;}
-          else{co.push('RSI未超買('+r.toFixed(0)+')');s+=1;}
-        }
-        if(s>=CFG.min_signal_score) hit={n:'🏛️ 三白兵',co,s,ms:7};}}
-
-    // ─── Build signal with ATR-based TP/SL (Optimization #1) ───
-    if(hit&&atr!=null&&atr>0){
-      // Entry price: next bar open (Optimization #3)
-      const ep=(CFG.entry_mode==='next_open'&&i+1<D.length)?D[i+1].open:c.close;
-      const tp=+(ep+CFG.atr_tp_mult*atr).toFixed(6);
-      const sl=+(ep-CFG.atr_sl_mult*atr).toFixed(6);
-      const tpPct=+((tp-ep)/ep*100).toFixed(2);
-      const slPct=+((ep-sl)/ep*100).toFixed(2);
-      out.push({index:i,date:c.date,close:c.close,pattern:hit.n,conds:hit.co,str:hit.s,maxStr:hit.ms,
-        entry:+ep.toFixed(6),tp,sl,tpPct,slPct,atr:+atr.toFixed(6),
-        entryMode:CFG.entry_mode==='next_open'?'下根開盤':'當根收盤'});
-    }
-  }
-  // Deduplicate: keep highest score within 5-bar window
-  const ded=[];
-  out.forEach(s=>{
-    if(!ded.length||s.index-ded[ded.length-1].index>5)ded.push(s);
-    else if(s.str>ded[ded.length-1].str)ded[ded.length-1]=s;});
-  S.sigs=ded;
-}
-
-/* ══ BACKTEST (Optimization #3: Next-bar entry + Trailing Stop) ══ */
-function doBacktest(){
-  S.btR=S.sigs.map(s=>{
-    const D=S.data;
-    const entryBar=CFG.entry_mode==='next_open'?s.index+1:s.index;
-    if(entryBar>=D.length) return{...s,result:'SKIP',exit:s.entry,bars:0,pnl:0,exitType:'資料不足'};
-
-    const ep=s.entry;
-    let curSL=s.sl;
-    let highWater=ep;
-    const maxBars=CFG.exit_mode==='trailing'?CFG.max_hold_bars:CFG.fixed_hold_bars;
-
-    for(let i=entryBar+1;i<D.length&&i<=entryBar+maxBars;i++){
-      const bar=D[i];
-
-      // Check stop-loss first (worst case)
-      if(bar.low<=curSL){
-        const exit=+curSL.toFixed(6);
-        const pnl=+((exit-ep)/ep*100).toFixed(2);
-        return{...s,result:pnl>=0?'WIN':'LOSS',exit,bars:i-entryBar,pnl,
-          exitType:highWater>ep?'移動停損':'初始停損'};
-      }
-      // Check take-profit
-      if(bar.high>=s.tp){
-        const pnl=+((s.tp-ep)/ep*100).toFixed(2);
-        return{...s,result:'WIN',exit:s.tp,bars:i-entryBar,pnl,exitType:'止盈達標'};
-      }
-      // Trailing stop: update high water mark + move SL up
-      if(CFG.exit_mode==='trailing'&&bar.high>highWater){
-        highWater=bar.high;
-        const atrVal=S.atrA[i]||s.atr;
-        const newSL=+(highWater-CFG.atr_trail_mult*atrVal).toFixed(6);
-        if(newSL>curSL) curSL=newSL; // only move up, never down
-      }
-    }
-    // Max hold expired
-    const lastBar=D[Math.min(entryBar+maxBars,D.length-1)];
-    const exit=lastBar.close;
-    const pnl=+((exit-ep)/ep*100).toFixed(2);
-    return{...s,result:pnl>=0?'WIN':'LOSS',exit:+exit.toFixed(6),bars:maxBars,pnl,exitType:'持倉到期'};
-  }).filter(r=>r.result!=='SKIP');
-}
-function compute(){
-  const D=S.data;S.cl=D.map(d=>d.close);S.vl=D.map(d=>d.volume);
-  S.macd=S.cl.length?_macd(S.cl):{line:[],sig:[],hist:[]};
-  S.rsi=S.cl.length?_rsi(S.cl):[];
-  S.rsiSlow=S.rsi.length?_rsiSlow(S.rsi):[];          // RSI slow line
-  S.atrA=D.length>=CFG.atr_period?_atr(D):D.map(()=>null); // ATR array
-  S.emas={};
-  CFG.ema_periods.forEach(p=>{
-    S.emas[p]=S.cl.length>=p?_ema(S.cl,p):S.cl.map(()=>null);
-  });
-  S.ma200=S.emas[200]||S.cl.map(()=>null);
-  S.ma50=S.emas[100]||S.cl.map(()=>null);
-  S.bb=S.cl.length>=CFG.bb_period?_bb(S.cl):{up:[],mid:[],lo:[]};
-  S.poc=D.length>=CFG.poc_lookback?_poc(D):null;
-  detectSignals();doBacktest();
-
-  // Risk Index (0-100)
-  S.riskA=S.cl.map((_,i)=>{
-    if(i<20) return null;
-    let risk=50;
-    const r=S.rsi[i],rSl=S.rsiSlow[i],mh=S.macd.hist[i],ml=S.macd.line[i],ms=S.macd.sig[i];
-    const m2=S.ma200[i],px=S.cl[i],bbu=S.bb.up[i],bbl=S.bb.lo[i],atr=S.atrA[i];
-    const avV=S.vl.slice(Math.max(0,i-CFG.vol_lookback),i).reduce((a,b)=>a+b,0)/CFG.vol_lookback||1;
-    if(r!=null){if(r>80)risk+=20;else if(r>70)risk+=12;else if(r>60)risk+=5;
-      if(r<20)risk+=15;else if(r<30)risk+=8;
-      if(rSl!=null&&r<rSl)risk+=5;}
-    if(mh!=null){if(mh<0)risk+=8;if(ml!=null&&ms!=null&&ml<ms)risk+=7;
-      const mp=S.macd.hist[i-1];if(mp!=null&&mh<mp&&mh<0)risk+=5;}
-    if(m2!=null){if(px<m2)risk+=10;if(px<m2*0.95)risk+=5;}
-    if(bbu!=null&&px>bbu)risk+=5;if(bbl!=null&&px<bbl)risk+=5;
-    if(atr!=null&&i>=2){const pa=S.atrA[i-1];if(pa&&atr>pa*1.5)risk+=8;else if(pa&&atr>pa*1.2)risk+=4;}
-    if(S.vl[i]/avV>2.5)risk+=5;else if(S.vl[i]/avV>1.8)risk+=3;
-    let drops=0;for(let j=i;j>Math.max(0,i-5);j--){if(S.cl[j]<S.cl[j-1])drops++;}
-    if(drops>=4)risk+=8;else if(drops>=3)risk+=4;
-    return Math.max(0,Math.min(100,Math.round(risk)));
-  });
-  S.entryMarkers=[];S.exitMarkers=[];
-  const{byP:_bp}=bStatsCalc();
-  S.sigs.forEach(sig=>{
-    const bp=_bp[sig.pattern];
-    if(bp&&bp.t>=2&&(bp.w/bp.t)>=0.6)
-      S.entryMarkers.push({index:sig.index,date:sig.date,price:sig.entry,pattern:sig.pattern,
-        wr:+(bp.w/bp.t*100).toFixed(0),entry:sig.entry,tp:sig.tp,sl:sig.sl});
-  });
-  S.entryMarkers.forEach(em=>{
-    for(let i=em.index+1;i<Math.min(S.data.length,em.index+CFG.max_hold_bars);i++){
-      if(S.riskA[i]!=null&&S.riskA[i]>=75){
-        S.exitMarkers.push({index:i,date:S.data[i].date,price:S.data[i].close,risk:S.riskA[i],
-          reason:S.riskA[i]>=85?'極高風險':'高風險',entryPattern:em.pattern});break;}}
-  });
-}
-
-/* ══ SVG ════════════════════════════════════════════════ */
-const lp=(arr,tx,ty)=>{let d='';arr.forEach((v,i)=>{if(v!=null)d+=(d?'L':'M')+tx(i).toFixed(1)+','+ty(v).toFixed(1);});return d;};
-const fmtP=v=>{const a=Math.abs(v);
-  if(a>=100000)return(v/1000).toFixed(0)+'K';if(a>=10000)return(v/1000).toFixed(1)+'K';
-  if(a>=100)return v.toFixed(0);return v.toFixed(4);};
-
-function svgCandle(C,ma200,ma50,bb,poc,sigs,w,h,emas,entries,exits){
-  const P={t:12,r:76,b:18,l:6};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=C.length;
-  if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
-  const bw=Math.max(2,cw/n-0.8);
-  let mn=Infinity,mx=-Infinity;
-  C.forEach(c=>{mn=Math.min(mn,c.low);mx=Math.max(mx,c.high);});
-  [...bb.up,...bb.lo,...ma200,...ma50,...Object.values(emas||{}).flat()].forEach(v=>{if(v!=null){mn=Math.min(mn,v);mx=Math.max(mx,v);}});
-  const pad=(mx-mn)*0.04;mn-=pad;mx+=pad;const R=mx-mn||1;
-  const tx=i=>P.l+(i+0.5)*(cw/n),ty=p=>P.t+ch-((p-mn)/R)*ch;
-  let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
-  s+='<rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#000000" rx="3"/>';
-  [0,.25,.5,.75,1].forEach(f=>{const p=mn+f*R,y=ty(p).toFixed(1);
-    s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="#12213a" stroke-width="1" stroke-dasharray="4 3"/>';
-    s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(p)+4).toFixed(1)+'" fill="#3a5070" font-size="9" font-family="monospace">'+fmtP(p)+'</text>';});
-  if(poc!=null&&IND.poc){const py=ty(poc).toFixed(1);
-    s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+py+'" y2="'+py+'" stroke="#9333ea" stroke-width="1.5" stroke-dasharray="6 3" opacity=".85"/>';
-    s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(poc)-2).toFixed(1)+'" fill="#9333ea" font-size="8" font-family="monospace">POC</text>';
-    s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(poc)+9).toFixed(1)+'" fill="#7c3aed" font-size="8" font-family="monospace">'+fmtP(poc)+'</text>';}
-  const upPts=bb.up.map((v,i)=>v!=null?tx(i).toFixed(1)+','+ty(v).toFixed(1):null).filter(Boolean);
-  const loPts=bb.lo.map((v,i)=>v!=null?tx(i).toFixed(1)+','+ty(v).toFixed(1):null).filter(Boolean);
-  if(upPts.length&&loPts.length&&IND.bb)s+='<path d="M'+upPts.join('L')+'L'+loPts.slice().reverse().join('L')+'Z" fill="rgba(59,130,246,0.055)"/>';
-  const bbU=lp(bb.up,tx,ty),bbL=lp(bb.lo,tx,ty),bbM=lp(bb.mid,tx,ty);
-  if(bbU&&IND.bb)s+='<path d="'+bbU+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';
-  if(bbL&&IND.bb)s+='<path d="'+bbL+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';
-  if(bbM&&IND.bb)s+='<path d="'+bbM+'" fill="none" stroke="#6366f1" stroke-width="1" opacity=".45"/>';
-  // EMA lines with distinct colors
-  const emaColors={'100':'#38bdf8','200':'#f59e0b','300':'#a78bfa','500':'#ef4444'};
-  const emaDash={'100':'5 2','200':'','300':'4 3','500':'6 2'};
-  if(emas){Object.entries(emas).forEach(([p,arr])=>{
-    if(!IND['ema'+p]) return;
-    const ep=lp(arr,tx,ty);
-    if(ep)s+='<path d="'+ep+'" fill="none" stroke="'+(emaColors[p]||'#5a7394')+'" stroke-width="'+(p==='200'?'1.5':'1.2')+'" opacity=".85" '+(emaDash[p]?'stroke-dasharray="'+emaDash[p]+'"':'')+'/>';
-  });}
-  C.forEach((c,i)=>{const x=tx(i),col=c.close>=c.open?'#22c55e':'#ef4444';
-    const bt=ty(Math.max(c.open,c.close)),bb2=ty(Math.min(c.open,c.close));
-    s+='<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+ty(c.high).toFixed(1)+'" y2="'+ty(c.low).toFixed(1)+'" stroke="'+col+'" stroke-width="1"/>';
-    s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+bt.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(1,bb2-bt).toFixed(1)+'" fill="'+col+'" opacity=".9"/>';});
-  if(!IND.signals) sigs=[];
-  sigs.forEach(sig=>{const li=sig.index-(C[0]?.i||0);if(li<0||li>=n)return;
-    const x=tx(li),y=ty(C[li]?.low??sig.close)+13;
-    s+='<polygon points="'+x.toFixed(1)+','+y.toFixed(1)+' '+(x-5).toFixed(1)+','+(y+9).toFixed(1)+' '+(x+5).toFixed(1)+','+(y+9).toFixed(1)+'" fill="#f59e0b" opacity=".95"/>';
-    s+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="2" fill="#fde68a"/>';});
-  // BUY markers
-  if(IND.signals&&entries){entries.forEach(em=>{
-    const li=em.index-(C[0]?.i||0);if(li<0||li>=n)return;
-    const x=tx(li),y=ty(C[li]?.low??em.price)+24;
-    s+='<rect x="'+(x-14).toFixed(1)+'" y="'+y.toFixed(1)+'" width="28" height="12" rx="2" fill="#22c55e" opacity=".9"/>';
-    s+='<text x="'+x.toFixed(1)+'" y="'+(y+9).toFixed(1)+'" text-anchor="middle" fill="#000" font-size="7" font-weight="bold" font-family="monospace">BUY '+em.wr+'%</text>';
-  });}
-  // EXIT markers
-  if(IND.signals&&exits){exits.forEach(ex=>{
-    const li=ex.index-(C[0]?.i||0);if(li<0||li>=n)return;
-    const x=tx(li),y=ty(C[li]?.high??ex.price)-17;
-    s+='<rect x="'+(x-15).toFixed(1)+'" y="'+y.toFixed(1)+'" width="30" height="12" rx="2" fill="#ef4444" opacity=".9"/>';
-    s+='<text x="'+x.toFixed(1)+'" y="'+(y+9).toFixed(1)+'" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold" font-family="monospace">EXIT '+ex.risk+'</text>';
-  });}
-  const ev=Math.max(1,Math.floor(n/(n>400?12:8)));
-  C.forEach((c,i)=>{if(i%ev!==0)return;
-    s+='<text x="'+tx(i).toFixed(1)+'" y="'+(P.t+ch+13).toFixed(1)+'" text-anchor="middle" fill="#253a52" font-size="9" font-family="monospace">'+c.date+'</text>';});
-  return s+'</svg>';}
-
-function svgVol(sub,w,h){
-  const P={t:4,r:76,b:2,l:6};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=sub.length;
-  if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
-  const bw=Math.max(2,cw/n-0.8),maxV=Math.max(...sub.map(d=>d.vol));
-  const tx=i=>P.l+(i+0.5)*(cw/n);
-  let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
-  s+='<rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#000000" rx="3"/>';
-  sub.forEach((d,i)=>{const x=tx(i),bh=Math.max(1,(d.vol/maxV)*ch);
-    s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+(P.t+ch-bh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+(d.bull?'#22c55e':'#ef4444')+'" opacity=".45" rx="1"/>';});
-  return s+'</svg>';}
-
-function svgMACD(sub,w,h){
-  const P={t:4,r:76,b:4,l:38};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=sub.length;
-  if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
-  const bw=Math.max(2,cw/n-0.8);
-  const vals=[...sub.map(d=>d.hist),...sub.map(d=>d.macd),...sub.map(d=>d.sig)].filter(v=>v!=null&&isFinite(v));
-  if(!vals.length)return'<svg width="'+w+'" height="'+h+'"><rect width="'+w+'" height="'+h+'" fill="#000000" rx="3"/></svg>';
-  let mn=Math.min(...vals),mx=Math.max(...vals);const pad=(mx-mn)*0.12||0.001;mn-=pad;mx+=pad;
-  const R=mx-mn||1,tx=i=>P.l+(i+0.5)*(cw/n),ty=v=>P.t+ch-((v-mn)/R)*ch,zY=ty(0);
-  const fY=v=>{const a=Math.abs(v);if(a>=1000)return(v/1000).toFixed(1)+'K';if(a>=1)return v.toFixed(1);if(a>=0.01)return v.toFixed(3);return v.toFixed(6);};
-  let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
-  s+='<rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#000000" rx="3"/>';
-  [mn,0,mx].forEach(v=>{const y=ty(v).toFixed(1);
-    s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="'+(v===0?'#2d4156':'#12213a')+'" stroke-width="'+(v===0?1.5:1)+'" '+(v!==0?'stroke-dasharray="3 3"':'')+'/>';
-    s+='<text x="'+(P.l-3)+'" y="'+(ty(v)+3).toFixed(1)+'" text-anchor="end" fill="#3a5070" font-size="8" font-family="monospace">'+fY(v)+'</text>';});
-  sub.forEach((d,i)=>{if(d.hist==null||!isFinite(d.hist))return;
-    const x=tx(i),hY=ty(d.hist),top=Math.min(hY,zY),ht=Math.max(1,Math.abs(hY-zY));
-    s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ht.toFixed(1)+'" fill="'+(d.hist>=0?'#22c55e':'#ef4444')+'" opacity=".7" rx="1"/>';});
-  const mp=lp(sub.map(d=>d.macd),tx,ty);if(mp)s+='<path d="'+mp+'" fill="none" stroke="#60a5fa" stroke-width="1.5"/>';
-  const sp=lp(sub.map(d=>d.sig),tx,ty);if(sp)s+='<path d="'+sp+'" fill="none" stroke="#f97316" stroke-width="1"/>';
-  return s+'</svg>';}
-
-function svgRisk(sub,w,h){
-  const P={t:4,r:76,b:4,l:28};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=sub.length;
-  if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
-  const tx=i=>P.l+(i+0.5)*(cw/n),ty=v=>P.t+ch-((v/100)*ch);
-  let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
-  s+='<rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#000" rx="3"/>';
-  s+='<rect x="'+P.l+'" y="'+ty(100).toFixed(1)+'" width="'+cw+'" height="'+(ty(75)-ty(100)).toFixed(1)+'" fill="rgba(239,68,68,0.08)"/>';
-  s+='<rect x="'+P.l+'" y="'+ty(25).toFixed(1)+'" width="'+cw+'" height="'+(ty(0)-ty(25)).toFixed(1)+'" fill="rgba(34,197,94,0.05)"/>';
-  [[75,'#ef4444'],[50,'#f97316'],[25,'#22c55e']].forEach(([v,col])=>{const y=ty(v).toFixed(1);
-    s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="1" stroke-dasharray="3 3" opacity=".4"/>';
-    s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(v)+4).toFixed(1)+'" fill="'+col+'" font-size="8" font-family="monospace">'+v+'</text>';});
-  for(let i=1;i<n;i++){const r0=sub[i-1].risk,r1=sub[i].risk;if(r0==null||r1==null)continue;
-    const col=r1>=75?'#ef4444':r1>=50?'#f97316':r1>=25?'#f59e0b':'#22c55e';
-    s+='<line x1="'+tx(i-1).toFixed(1)+'" y1="'+ty(r0).toFixed(1)+'" x2="'+tx(i).toFixed(1)+'" y2="'+ty(r1).toFixed(1)+'" stroke="'+col+'" stroke-width="2"/>';}
-  return s+'</svg>';}
-function svgRSI(sub,w,h){
-  const P={t:4,r:76,b:4,l:28};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=sub.length;
-  if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
-  const tx=i=>P.l+(i+0.5)*(cw/n),ty=v=>P.t+ch-((v/100)*ch);
-  let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
-  s+='<rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#000000" rx="3"/>';
-  s+='<rect x="'+P.l+'" y="'+ty(70).toFixed(1)+'" width="'+cw+'" height="'+(ty(100)-ty(70)).toFixed(1)+'" fill="rgba(239,68,68,0.07)"/>';
-  s+='<rect x="'+P.l+'" y="'+ty(30).toFixed(1)+'" width="'+cw+'" height="'+(ty(0)-ty(30)).toFixed(1)+'" fill="rgba(34,197,94,0.07)"/>';
-  [[70,'#ef4444'],[50,'#2d4156'],[30,'#22c55e']].forEach(([v,col])=>{const y=ty(v).toFixed(1);
-    s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="1" '+(v!==50?'stroke-dasharray="3 3"':'')+'/>';
-    s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(v)+4).toFixed(1)+'" fill="'+col+'" font-size="8" font-family="monospace">'+v+'</text>';});
-  const rp=lp(sub.map(d=>d.rsi),tx,ty);if(rp)s+='<path d="'+rp+'" fill="none" stroke="#a78bfa" stroke-width="1.5"/>';
-  const rsp=lp(sub.map(d=>d.rsiSlow),tx,ty);if(rsp)s+='<path d="'+rsp+'" fill="none" stroke="#f97316" stroke-width="1" stroke-dasharray="4 2"/>';
-  return s+'</svg>';}
-
-/* ══ SIDEBAR ════════════════════════════════════════════ */
-async function fetchTop100(){
-  sbLoading=true;renderSidebar();
-  try{
-    const r=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h');
-    if(!r.ok)throw new Error('rate limit');
-    const d=await r.json();
-    top100=d.filter(c=>!STABLES.has(c.symbol.toUpperCase())).map((c,idx)=>({
-      rank:c.market_cap_rank||idx+1,symbol:c.symbol.toUpperCase(),
-      name:c.name,price:c.current_price||0,change24h:c.price_change_percentage_24h||0
-    }));
-  }catch(e){top100=FALLBACK;}
-  sbLoading=false;renderSidebar();
-}
-
-function toggleFav(sym,e){
-  if(e)e.stopPropagation();
-  favs=favs.includes(sym)?favs.filter(f=>f!==sym):[...favs,sym];
-  localStorage.setItem('kl_favs',JSON.stringify(favs));
-  renderSidebar();renderHdr();
-}
-
-function setSideTab(t){sideTab=t;renderSidebar();}
-
-function renderSidebar(){
-  const allBtn=document.getElementById('sb-all'),favBtn=document.getElementById('sb-fav');
-  if(allBtn)allBtn.className='sb-tab'+(sideTab==='all'?' on':'');
-  if(favBtn)favBtn.className='sb-tab'+(sideTab==='fav'?' on':'');
-  const scanBtn=document.getElementById('sb-scan');
-  if(scanBtn){
-    scanBtn.className='sb-tab'+(sideTab==='scan'?' on':'');
-    const scanCount=Object.keys(scanResults).length;
-    if(scanCount>0) scanBtn.textContent='🏆 推薦('+scanCount+')';
-  }
-  if(sbLoading&&sideTab!=='scan'){
-    document.getElementById('coin-list').innerHTML='<div style="text-align:center;padding:24px 10px;color:#2d4156"><div style="font-size:18px;margin-bottom:8px">⟳</div><div style="font-size:10px">載入 Top 100…</div></div>';
-    return;}
-
-  const fv=(document.getElementById('sb-filter')?.value||'').trim().toUpperCase();
-
-  // ── scan tab ──
-  if(sideTab==='scan'){
-    const entries=Object.entries(scanResults).sort((a,b)=>b[1].wr-a[1].wr);
-    let filtered=fv?entries.filter(([sym])=>sym.includes(fv)):entries;
-    if(!filtered.length){
-      document.getElementById('coin-list').innerHTML=
-        '<div style="text-align:center;padding:20px 10px;color:#2d4156;font-size:10px;line-height:1.8">'
-        +(scanRunning?'<div style="font-size:16px;margin-bottom:6px" class="spin">⟳</div>正在掃描 Top100 幣種…<br><span style="color:#3d5470">'+Object.keys(scanResults).length+' / '+top100.length+' 完成</span>'
-          :'點擊右上 ⟳ 開始掃描<br>或等待每小時自動掃描')
-        +'</div>';
-      return;}
-    document.getElementById('coin-list').innerHTML=
-      (lastScanTime?'<div style="font-size:9px;color:#2d4156;padding:4px 8px;border-bottom:1px solid #0d1825">上次掃描: '+lastScanTime+'</div>':'')
-      +(scanRunning?'<div style="font-size:9px;color:#f59e0b;padding:4px 8px;border-bottom:1px solid #0d1825">掃描中… '+Object.keys(scanResults).length+'/'+top100.length+'</div>':'')
-      +filtered.slice(0,20).map(([sym,d],idx)=>{
-        const isActive=sym===S.coin,isFav=favs.includes(sym);
-        const wrCol=d.wr>60?'#22c55e':d.wr>45?'#f59e0b':'#ef4444';
-        return '<div class="ci'+(isActive?' active':'')+'" onclick="pickCoin(\''+sym+'\')">'
-          +'<span class="ci-rank" style="color:'+wrCol+';font-weight:bold">'+(idx+1)+'</span>'
-          +'<div class="ci-mid">'
-            +'<span class="ci-sym">'+sym+'</span>'
-            +'<span class="ci-price">'+d.sigs+'訊號 · '+d.wins+'勝</span>'
-          +'</div>'
-          +'<span style="font-size:13px;font-weight:bold;color:'+wrCol+';min-width:38px;text-align:right">'+d.wr.toFixed(0)+'%</span>'
-          +'<span class="ci-star'+(isFav?' on':'')+'" onclick="toggleFav(\''+sym+'\',event)">'+(isFav?'★':'☆')+'</span>'
-        +'</div>';
-      }).join('');
-    return;
-  }
-
-  // ── all / fav tabs ──
-  let baseList=sideTab==='fav'
-    ?[...top100.filter(c=>favs.includes(c.symbol)),
-       ...favs.filter(s=>!top100.some(c=>c.symbol===s)).map(s=>({rank:'★',symbol:s,name:s,price:0,change24h:0}))]
-    :top100;
-  if(fv)baseList=baseList.filter(c=>c.symbol.includes(fv)||(c.name||'').toUpperCase().includes(fv));
-  if(!baseList.length){
-    const msg=sideTab==='fav'?'點擊 ☆ 加入最愛':'查無符合幣種';
-    document.getElementById('coin-list').innerHTML='<div style="text-align:center;padding:24px 10px;color:#2d4156;font-size:10px">'+msg+'</div>';
-    return;}
-  document.getElementById('coin-list').innerHTML=baseList.map(c=>{
-    const isFav=favs.includes(c.symbol),isActive=c.symbol===S.coin;
-    const col=c.change24h>=0?'#22c55e':'#ef4444',sign=c.change24h>=0?'+':'';
-    const chgStr=c.change24h!==0?sign+c.change24h.toFixed(1)+'%':'—';
-    const sr=scanResults[c.symbol];
-    const wrBadge=sr?'<span style="font-size:8px;padding:1px 3px;border-radius:2px;margin-left:3px;background:'+(sr.wr>55?'#22c55e22':'#ef444422')+';color:'+(sr.wr>55?'#22c55e':'#ef4444')+'">'+sr.wr.toFixed(0)+'%</span>':'';
-    return '<div class="ci'+(isActive?' active':'')+'" onclick="pickCoin(\''+c.symbol+'\')">'
-      +'<span class="ci-rank">'+c.rank+'</span>'
-      +'<div class="ci-mid">'
-        +'<span class="ci-sym">'+c.symbol+wrBadge+'</span>'
-        +(c.price?'<span class="ci-price">'+fpS(c.price)+'</span>':'')
-      +'</div>'
-      +'<span class="ci-chg" style="color:'+col+'">'+chgStr+'</span>'
-      +'<span class="ci-star'+(isFav?' on':'')+'" onclick="toggleFav(\''+c.symbol+'\',event)">'+(isFav?'★':'☆')+'</span>'
-      +'</div>';
-  }).join('');}
-
-// ── Win-rate scanner ──
-async function scanWinRates(){
-  if(scanRunning) return;
-  scanRunning=true;scanResults={};renderSidebar();
-  const coins=top100.map(c=>c.symbol).slice(0,100);
-  for(let ci=0;ci<coins.length;ci++){
-    const sym=coins[ci];
-    try{
-      const ex=EX[S.ex];
-      const data=await ex.get(ex.sym(sym),'1D',300);
-      if(!data||data.length<50) continue;
-      // Quick compute
-      const cl=data.map(d=>d.close),vl=data.map(d=>d.volume);
-      const macd=_macd(cl),rsi=_rsi(cl),rsiSlow=_rsiSlow(rsi);
-      const ma200=cl.length>=200?_ema(cl,200):cl.map(()=>null);
-      const bb=cl.length>=20?_bb(cl):{up:[],mid:[],lo:[]};
-      const atrArr=_atr(data);
-      // Temporarily swap state
-      const oldState={data:S.data,cl:S.cl,vl:S.vl,macd:S.macd,rsi:S.rsi,rsiSlow:S.rsiSlow,
-        ma200:S.ma200,bb:S.bb,atrA:S.atrA,sigs:S.sigs,btR:S.btR};
-      S.data=data;S.cl=cl;S.vl=vl;S.macd=macd;S.rsi=rsi;S.rsiSlow=rsiSlow;
-      S.ma200=ma200;S.bb=bb;S.atrA=atrArr;
-      detectSignals();doBacktest();
-      const sigs=S.sigs.length,wins=S.btR.filter(r=>r.result==='WIN').length;
-      const wr=sigs>0?+(wins/sigs*100).toFixed(1):0;
-      if(sigs>=2) scanResults[sym]={sigs,wins,wr};
-      // Restore
-      Object.assign(S,oldState);
-    }catch(e){}
-    if(ci%5===0) renderSidebar();
-    await new Promise(r=>setTimeout(r,350)); // rate limit
-  }
-  scanRunning=false;lastScanTime=new Date().toLocaleTimeString();
-  renderSidebar();
-}
-
-// Auto-scan every hour
-function startAutoScan(){
-  if(scanTimer) clearInterval(scanTimer);
-  scanTimer=setInterval(()=>{if(top100.length>0)scanWinRates();},3600000);
-}
-
-/* ══ DISPLAY & RENDER ═══════════════════════════════════ */
-const IND={ema100:true,ema200:true,ema300:false,ema500:false,bb:true,poc:true,vol:true,macd:true,rsi:true,risk:true,signals:true};
-let chartW=640,chartH=300,zoomLevel=1.0,panOffset=0,resizeT=null;
-function getDisp(){
-  const baseShow=S.range==='all'?S.data.length:({'3M':60,'1M':80,'1W':80,'1D':80,'4H':120,'1H':100,'15M':100}[S.tf]||80);
-  const zoomedShow=Math.max(15,Math.min(S.data.length,Math.round(baseShow/zoomLevel)));
-  const maxOffset=Math.max(0,S.data.length-zoomedShow);
-  const clampedPan=Math.max(-maxOffset,Math.min(0,panOffset));
-  const si=Math.max(0,S.data.length-zoomedShow+clampedPan);
-  return{si,candles:S.data.slice(si),ma200:S.ma200.slice(si),ma50:S.ma50.slice(si),
-    emas:Object.fromEntries(CFG.ema_periods.map(p=>[p,(S.emas[p]||[]).slice(si)])),
-    bb:{up:S.bb.up.slice(si),mid:(S.bb.mid||[]).slice(si),lo:S.bb.lo.slice(si)},
-    sigs:S.sigs.filter(s=>s.index>=si),entries:S.entryMarkers.filter(e=>e.index>=si),exits:S.exitMarkers.filter(e=>e.index>=si),
-    sub:S.data.slice(si).map((c,ii)=>({date:c.date,vol:c.volume,bull:c.close>=c.open,
-      macd:S.macd.line[si+ii],sig:S.macd.sig[si+ii],hist:S.macd.hist[si+ii],rsi:S.rsi[si+ii],rsiSlow:S.rsiSlow[si+ii],risk:S.riskA[si+ii]}))};
-}
-function bStatsCalc(){
-  const wins=S.btR.filter(r=>r.result==='WIN').length,tot=S.btR.length;
-  const wr=tot?+(wins/tot*100).toFixed(1):0;
-  const avgW=wins?+(S.btR.filter(r=>r.result==='WIN').reduce((a,r)=>a+r.pnl,0)/wins).toFixed(2):0;
-  const avgL=(tot-wins)?+(S.btR.filter(r=>r.result==='LOSS').reduce((a,r)=>a+r.pnl,0)/(tot-wins)).toFixed(2):0;
-  const byP={};S.btR.forEach(r=>{if(!byP[r.pattern])byP[r.pattern]={w:0,t:0};byP[r.pattern].t++;if(r.result==='WIN')byP[r.pattern].w++;});
-  return{wins,tot,wr,avgW,avgL,byP};}
-function bStats(){
-  const wins=S.btR.filter(r=>r.result==='WIN').length,tot=S.btR.length;
-  const wr=tot?+(wins/tot*100).toFixed(1):0;
-  const avgW=wins?+(S.btR.filter(r=>r.result==='WIN').reduce((a,r)=>a+r.pnl,0)/wins).toFixed(2):0;
-  const avgL=(tot-wins)?+(S.btR.filter(r=>r.result==='LOSS').reduce((a,r)=>a+r.pnl,0)/(tot-wins)).toFixed(2):0;
-  const byP={};S.btR.forEach(r=>{if(!byP[r.pattern])byP[r.pattern]={w:0,t:0};byP[r.pattern].t++;if(r.result==='WIN')byP[r.pattern].w++;});
-  return{wins,tot,wr,avgW,avgL,byP};}
-
-function renderAll(){
-  const el=document.getElementById('charts');
-  if(el)chartW=Math.max(280,el.getBoundingClientRect().width-14);
-  renderHdr();renderErr();renderLoad();
-  if(!S.loading){renderCharts();renderPanel();}
-  renderSidebar();
-}
-
-function renderHdr(){
-  document.getElementById('ex-btns').innerHTML=Object.entries(EX).map(([k,v])=>
-    '<button onclick="setEx(\''+k+'\')" style="border:1px solid '+(S.ex===k?v.color:'#162233')+';background:'+(S.ex===k?v.color+'22':'transparent')+';color:'+(S.ex===k?v.color:'#5a7394')+'">'+v.label+'</button>'
-  ).join('');
-  document.getElementById('coin-btns').innerHTML=QUICK.map(c=>
-    '<button onclick="pickCoin(\''+c+'\')" style="border:1px solid '+(S.coin===c?'#1d4ed8':'#162233')+';background:'+(S.coin===c?'#1d4ed8':'transparent')+';color:'+(S.coin===c?'#fff':'#5a7394')+'">'+c+'</button>'
-  ).join('');
-  document.getElementById('tf-btns').innerHTML=TFS.map(t=>
-    '<button onclick="setTF(\''+t+'\')" style="border:1px solid '+(S.tf===t?'#f59e0b':'#162233')+';background:'+(S.tf===t?'#f59e0b22':'transparent')+';color:'+(S.tf===t?'#f59e0b':'#5a7394')+'">'+t+'</button>'
-  ).join('');
-  if(!QUICK.includes(S.coin)){document.getElementById('srch').value=S.coin;document.getElementById('srch-clear').style.display='block';}
-  const px=S.cl[S.cl.length-1]||0,r=S.rsi[S.rsi.length-1];
-  const ml=S.macd.line[S.macd.line.length-1],ms=S.macd.sig[S.macd.sig.length-1];
-  const m2=S.ma200[S.ma200.length-1],abv=m2!=null&&px>m2;
-  const isFav=favs.includes(S.coin);
-  document.getElementById('refresh').textContent=S.loading?'⟳ 載入中':'⟳ 刷新';
-  document.getElementById('stats-bar').innerHTML=
-    '<span style="color:'+EX[S.ex].color+';font-weight:bold">'+EX[S.ex].sym(S.coin)+'</span>'
-    +'<span onclick="toggleFav(\''+S.coin+'\',event)" title="'+(isFav?'移除最愛':'加入最愛')+'" style="cursor:pointer;color:'+(isFav?'#f59e0b':'#2d4156')+';font-size:15px;margin-left:-4px">'+(isFav?'★':'☆')+'</span>'
-    +'<span style="color:var(--dim)">現價<span style="color:var(--text);margin-left:4px">'+fp(px)+'</span></span>'
-    +'<span style="color:var(--dim)">RSI<span style="color:'+(r<30?'#22c55e':r>70?'#ef4444':'#5a7394')+';margin-left:4px">'+(r!=null?r.toFixed(1):'-')+'</span></span>'
-    +'<span style="color:var(--dim)">MACD<span style="color:'+(ml>ms?'#22c55e':'#ef4444')+';margin-left:4px">'+(ml==null?'…':ml>ms?'多頭↑':'空頭↓')+'</span></span>'
-    +'<span style="color:var(--dim)">MA200<span style="color:'+(m2?abv?'#22c55e':'#ef4444':'#2d4156')+';margin-left:4px">'+(m2?abv?'站上↑':'跌破↓':'N/A')+'</span></span>'
-    +(S.updated?'<span style="color:#2d4156;margin-left:auto">'+S.updated+'</span>':'')
-    +'<span style="color:#1a2e45;font-size:9px;margin-left:auto">/ 快速搜尋</span>';}
-
-function renderErr(){
-  const el=document.getElementById('err');
-  if(S.error){el.style.display='flex';
-    el.innerHTML='<span style="color:#ef4444;font-size:11px">&#9888; '+S.error+'</span>'
-      +'<button onclick="S.error=null;S.coin=\'BTC\';fetchData()" style="border:1px solid #ef4444;background:transparent;color:#ef4444;white-space:nowrap;flex-shrink:0">&#8592; 回到 BTC</button>';}
-  else el.style.display='none';}
-
-function renderLoad(){
-  const el=document.getElementById('loading'),mn=document.getElementById('main');
-  if(S.loading&&!S.data.length){el.style.display='flex';mn.style.display='none';
-    document.getElementById('load-msg').textContent='正在從 '+EX[S.ex].label+' 載入 '+EX[S.ex].sym(S.coin)+' '+S.tf+'…';}
-  else{el.style.display='none';mn.style.display='flex';}}
-
-function renderCharts(){
-  if(!S.data.length){
-    document.getElementById('chart-content').innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:14px;color:#2d4156">'
-      +'<div style="font-size:36px">📊</div>'
-      +'<div style="font-size:14px;color:#3d5470">尚無資料</div>'
-      +'<div style="font-size:11px;text-align:center;line-height:1.8;color:#2d4156">'
-        +'請從左側選擇幣種，或在搜尋框輸入加密幣代號<br>'
-        +'<span style="color:#ef4444">注意：本工具僅支援加密貨幣，不支援股票代號</span>'
-      +'</div>'
-      +'<button onclick="fetchData()" style="margin-top:8px;padding:6px 20px;border:1px solid #3d5470;border-radius:4px;background:transparent;color:#5a7394;cursor:pointer">⟳ 重新載入 BTC</button>'
-      +'</div>';return;}
-  const d=getDisp();const{candles,ma200,ma50,bb,sigs,sub}=d;
-  const tabBar='<div style="display:flex;gap:5px;margin-bottom:6px;align-items:center;flex-wrap:wrap">'
-    +'<button class="tab-btn'+(S.tab==='chart'?' on':'')+'" onclick="setTab(\'chart\')">📈 圖表分析</button>'
-    +'<button class="tab-btn'+(S.tab==='backtest'?' on':'')+'" onclick="setTab(\'backtest\')">📋 回測報告</button>'
-    +'<button class="tab-btn'+(S.tab==='config'?' on':'')+'" onclick="setTab(\'config\')">⚙ 參數</button>'
-    +'<span style="margin-left:10px;display:flex;gap:3px">'
-      +'<button onclick="setRange(\'recent\')" style="padding:3px 10px;border-radius:3px;border:1px solid '+(S.range==='recent'?'#60a5fa':'#162233')+';background:'+(S.range==='recent'?'#60a5fa22':'transparent')+';color:'+(S.range==='recent'?'#60a5fa':'#5a7394')+'">近期</button>'
-      +'<button onclick="setRange(\'all\')" style="padding:3px 10px;border-radius:3px;border:1px solid '+(S.range==='all'?'#60a5fa':'#162233')+';background:'+(S.range==='all'?'#60a5fa22':'transparent')+';color:'+(S.range==='all'?'#60a5fa':'#5a7394')+'">全歷史</button>'
-    +'</span>'
-    +'<button onclick="zoomLevel=1.0;panOffset=0;chartH=300;renderCharts()" style="padding:2px 8px;border:1px solid #162233;background:transparent;color:#3d5470;margin-left:4px" title="重置縮放">⊡</button>'
-    +'<span style="margin-left:auto;font-size:11px;color:#2d4156">'+S.data.length+'根K棒 · 顯示'+candles.length+'根 · 縮放'+Math.round(zoomLevel*100)+'%</span>'
-    +'</div>';
-  let html=tabBar;
-  if(S.tab==='chart'){
-    html+='<div style="display:flex;gap:10px;margin-bottom:4px;font-size:10px;color:#2d4156;flex-wrap:wrap">'
-      +'<span style="color:#38bdf8">-- EMA100</span><span style="color:#f59e0b">── EMA200</span><span style="color:#a78bfa">-- EMA300</span><span style="color:#ef4444">-- EMA500</span>'
-      +'<span style="color:#60a5fa">-- BB(20,2)</span><span style="color:#6366f1">── BB中軌</span>'
-      +'<span style="color:#9333ea">-- POC</span><span style="color:#f59e0b">▲ 形態信號</span>'
-      +'</div>'
-      +indBar()
-      +'<div id="candle-wrap" style="background:#000000;border-radius:7px;margin-bottom:5px;padding:5px 0 2px;overflow:hidden">'+svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,chartH,d.emas,d.entries||[],d.exits||[])+'</div>'
-      +(IND.vol?'<div class="cbox"><div class="clbl">成交量</div>'+svgVol(sub,chartW,58)+'</div>':'')
-      +(IND.macd?'<div class="cbox"><div class="clbl">MACD(12,26,9) <span style="color:#60a5fa">── MACD</span><span style="color:#f97316">── Signal</span></div>'+svgMACD(sub,chartW,90)+'</div>':'')
-      +(IND.rsi?'<div class="cbox"><div class="clbl">RSI(14) <span style="color:#a78bfa">── 快線</span> <span style="color:#f97316">-- 慢線(MA9)</span> <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>'+svgRSI(sub,chartW,90)+'</div>':'')
-      +(IND.risk?'<div class="cbox"><div class="clbl">風險指數 <span style="color:#22c55e">25安全</span> / <span style="color:#f97316">50警戒</span> / <span style="color:#ef4444">75危險</span></div>'+svgRisk(sub,chartW,80)+'</div>':'')
-  }else{
-    const{wins,tot,wr,avgW,avgL,byP}=bStats();
-    html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px">'
-      +[['總信號數',tot,'#60a5fa'],['歷史勝率',wr+'%',wr>55?'#22c55e':wr>45?'#f59e0b':'#ef4444'],
-         ['平均獲利','+'+avgW+'%','#22c55e'],['平均虧損',avgL+'%','#ef4444']].map(([l,v,c])=>
-        '<div style="background:var(--card);border-radius:7px;padding:10px;text-align:center">'
-          +'<div style="font-size:9px;color:var(--dim);margin-bottom:3px">'+l+'</div>'
-          +'<div style="font-size:22px;font-weight:bold;color:'+c+'">'+v+'</div>'
-        +'</div>').join('')+'</div>'
-      +'<div style="background:var(--card);border-radius:7px;padding:9px 12px;margin-bottom:10px">'
-        +'<div style="font-size:9px;color:var(--dim);margin-bottom:5px">整體勝率分佈</div>'
-        +'<div style="display:flex;height:12px;border-radius:3px;overflow:hidden;margin-bottom:5px">'
-          +'<div style="width:'+wr+'%;background:#22c55e"></div><div style="flex:1;background:#ef4444"></div>'
-        +'</div>'
-        +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--mid)">'
-          +'<span>&#x1f7e2; 勝 '+wins+'次 ('+wr+'%)</span><span>&#x1f534; 敗 '+(tot-wins)+'次 ('+(100-wr).toFixed(1)+'%)</span>'
-        +'</div>'
-      +'</div>'
-      +'<div style="font-size:10px;color:var(--mid);margin-bottom:6px">各形態歷史勝率</div>'
-      +Object.entries(byP).map(([pat,d])=>
-        '<div style="background:var(--card);border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">'
-          +'<div style="flex:1;font-size:11px">'+pat+'</div>'
-          +'<div style="display:flex;align-items:center;gap:8px">'
-            +'<span style="font-size:9px;color:var(--dim)">'+d.t+'次</span>'
-            +'<div style="width:70px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden">'
-              +'<div style="width:'+(d.w/d.t*100).toFixed(0)+'%;height:100%;background:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+'"></div>'
-            +'</div>'
-            +'<span style="font-size:12px;font-weight:bold;color:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+';min-width:32px">'+(d.w/d.t*100).toFixed(0)+'%</span>'
-          +'</div>'
-        +'</div>').join('')
-      +'<div style="font-size:10px;color:var(--mid);margin:10px 0 5px">交易記錄 (最新優先)</div>'
-      +'<div style="max-height:340px;overflow-y:auto">'
-      +S.btR.slice().reverse().map(r=>
-        '<div style="background:var(--card);border-radius:5px;padding:7px 9px;margin-bottom:4px;border-left:3px solid '+(r.result==='WIN'?'#22c55e':'#ef4444')+';display:flex;justify-content:space-between;align-items:center">'
-          +'<div><span style="font-size:9px;color:var(--dim)">'+r.date+' </span><span style="font-size:10px">'+r.pattern+'</span>'
-            +'<div style="font-size:9px;color:var(--dim);margin-top:1px">進:'+fp(r.entry)+' → 出:'+fp(r.exit)+(r.exitType?' ('+r.exitType+')':'')+'</div></div>'
-          +'<div style="text-align:right">'
-            +'<div style="font-size:11px;font-weight:bold;color:'+(r.result==='WIN'?'#22c55e':'#ef4444')+'">'+(r.pnl>0?'+':'')+r.pnl+'%</div>'
-            +'<div style="font-size:9px;color:var(--dim)">'+r.bars+'根K棒</div>'
-          +'</div>'
-        +'</div>').join('')
-      +'</div>';}
-  if(S.tab==='config'){
-    const cfgRows=[
-      ['atr_period','ATR 週期','number'],['atr_sl_mult','停損倍數 N','number'],
-      ['atr_tp_mult','停盈倍數 M','number'],['atr_trail_mult','移動停損倍數 T','number'],
-      ['rsi_period','RSI 週期','number'],['rsi_slow_period','RSI 慢線週期','number'],
-      ['rsi_oversold','RSI 超賣','number'],['rsi_overbought','RSI 超買','number'],
-      ['vol_lookback','成交量回看根數','number'],['vol_surge_mult','成交量放大倍數','number'],
-      ['ma200_proximity','MA200 接近閾值','number'],['min_signal_score','最低觸發分數','number'],
-      ['max_hold_bars','最大持倉K棒數','number'],
-    ];
-    html+='<div style="background:var(--card);border-radius:8px;padding:14px;margin-top:4px">'
-      +'<div style="font-size:13px;color:var(--bl);margin-bottom:10px;font-weight:bold">⚙ 全局參數設定 (Global Config)</div>'
-      +'<div style="font-size:10px;color:var(--dim);margin-bottom:12px;line-height:1.6">'
-        +'所有閾值已從程式碼中抽離為全局變數。修改後點「套用並重新計算」即時生效。'
-      +'</div>'
-      +cfgRows.map(([k,l,t])=>
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #162233">'
-          +'<label style="font-size:11px;color:var(--mid)">'+l+'</label>'
-          +'<input id="cfg_'+k+'" type="number" step="any" value="'+CFG[k]+'" '
-            +'style="width:70px;background:#0a1628;border:1px solid #162233;border-radius:3px;color:var(--text);padding:3px 6px;font-family:monospace;font-size:12px;text-align:right">'
-        +'</div>').join('')
-      +'<div style="display:flex;gap:8px;margin-top:14px">'
-        +'<button onclick="applyCfg()" style="flex:1;padding:8px;border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:4px;font-size:12px">套用並重新計算</button>'
-        +'<button onclick="resetCfg()" style="padding:8px 12px;border:1px solid #2d4156;background:transparent;color:#5a7394;border-radius:4px;font-size:12px">重置預設</button>'
-      +'</div>'
-      +'<div style="margin-top:14px;font-size:10px;color:#2d4156;line-height:1.7">'
-        +'<div style="color:#f59e0b;margin-bottom:4px">公式對照</div>'
-        +'<div>止損 SL = 進場價 - (N × ATR)</div>'
-        +'<div>止盈 TP = 進場價 + (M × ATR)</div>'
-        +'<div>移動停損 = 最高價 - (T × ATR)</div>'
-        +'<div style="margin-top:4px">進場 = 訊號觸發後下一根K棒開盤價</div>'
-        +'<div>RSI確認 = RSI快線 > RSI慢線(SMA'+CFG.rsi_slow_period+')</div>'
-      +'</div>'
-    +'</div>';
-  }
-  document.getElementById('chart-content').innerHTML=html;}
-
-function renderPanel(){
-  if(!S.data.length){
-    document.getElementById('panel-content').innerHTML='<div style="color:#2d4156;font-size:11px;text-align:center;padding:30px 10px">等待資料載入…</div>';
-    return;}
-  const px=S.cl[S.cl.length-1]||0,r=S.rsi[S.rsi.length-1];
-  const ml=S.macd.line[S.macd.line.length-1],ms=S.macd.sig[S.macd.sig.length-1];
-  const m2=S.ma200[S.ma200.length-1],abv=m2!=null&&px>m2;
-  const bbu=S.bb.up[S.bb.up.length-1],bbl=S.bb.lo[S.bb.lo.length-1];
-  const m5=S.ma50[S.ma50.length-1];
-  const rows=[
-    {l:'RSI(14)',v:r!=null?r.toFixed(1):null,s:r==null?'N/A':r<30?'超賣🟢':r>70?'超買🔴':'中性',c:r<30?'#22c55e':r>70?'#ef4444':'#5a7394'},
-    {l:'MACD訊號',v:null,s:ml==null?'計算中':ml>ms?'黃金交叉↑':'死亡交叉↓',c:ml>ms?'#22c55e':'#ef4444'},
-    {l:'EMA100',v:S.emas[100]?fp(S.emas[100][S.emas[100].length-1]):'—',
-      s:S.emas[100]&&S.emas[100][S.emas[100].length-1]!=null?(px>S.emas[100][S.emas[100].length-1]?'站上':'跌破'):'N/A',
-      c:S.emas[100]&&S.emas[100][S.emas[100].length-1]!=null&&px>S.emas[100][S.emas[100].length-1]?'#22c55e':'#ef4444'},
-    {l:'EMA200',v:m2?fp(m2):'資料不足',s:m2?abv?'站上(多)':'跌破(空)':'—',c:abv?'#22c55e':m2?'#ef4444':'#2d4156'},
-    {l:'EMA300',v:S.emas[300]?fp(S.emas[300][S.emas[300].length-1]):'—',
-      s:S.emas[300]&&S.emas[300][S.emas[300].length-1]!=null?(px>S.emas[300][S.emas[300].length-1]?'站上':'跌破'):'N/A',
-      c:S.emas[300]&&S.emas[300][S.emas[300].length-1]!=null&&px>S.emas[300][S.emas[300].length-1]?'#22c55e':'#ef4444'},
-    {l:'EMA500',v:S.emas[500]?fp(S.emas[500][S.emas[500].length-1]):'—',
-      s:S.emas[500]&&S.emas[500][S.emas[500].length-1]!=null?(px>S.emas[500][S.emas[500].length-1]?'站上':'跌破'):'N/A',
-      c:S.emas[500]&&S.emas[500][S.emas[500].length-1]!=null&&px>S.emas[500][S.emas[500].length-1]?'#22c55e':'#ef4444'},
-    {l:'BB上軌',v:bbu?fp(bbu):'—',s:bbu?px>bbu?'已突破':'正常':'—',c:px>bbu?'#f59e0b':'#5a7394'},
-    {l:'BB下軌',v:bbl?fp(bbl):'—',s:bbl?px<bbl?'已跌破':'正常':'—',c:px<bbl?'#ef4444':'#5a7394'},
-    {l:'POC',v:S.poc?fp(S.poc):'—',s:S.poc?px>S.poc?'高於POC':'低於POC':'—',c:S.poc&&px>S.poc?'#22c55e':'#ef4444'},
-    {l:'風險指數',v:S.riskA[S.riskA.length-1]!=null?S.riskA[S.riskA.length-1]:'—',
-      s:S.riskA[S.riskA.length-1]!=null?(S.riskA[S.riskA.length-1]>=75?'\u26A0 危險':S.riskA[S.riskA.length-1]>=50?'\u26A1 警戒':'\u2713 安全'):'N/A',
-      c:S.riskA[S.riskA.length-1]>=75?'#ef4444':S.riskA[S.riskA.length-1]>=50?'#f97316':'#22c55e'},
-    {l:'ATR('+CFG.atr_period+')',v:S.atrA[S.atrA.length-1]?fp(S.atrA[S.atrA.length-1]):'—',s:S.atrA[S.atrA.length-1]?((S.atrA[S.atrA.length-1]/px*100).toFixed(1)+'%波幅'):'N/A',c:'#5a7394'},
-    {l:'RSI慢線',v:S.rsiSlow[S.rsiSlow.length-1]!=null?S.rsiSlow[S.rsiSlow.length-1].toFixed(1):'—',s:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null)?(r>S.rsiSlow[S.rsiSlow.length-1]?'快>慢 多':'快<慢 空'):'N/A',c:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null&&r>S.rsiSlow[S.rsiSlow.length-1])?'#22c55e':'#ef4444'},
-  ];
-  const last=S.sigs[S.sigs.length-1];const{byP}=bStats();
-  let html='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 當前指標狀態</div>'
-    +rows.map(x=>'<div class="prow">'
-      +'<span style="font-size:10px;color:var(--dim)">'+x.l+'</span>'
-      +'<div style="text-align:right">'+(x.v?'<span style="font-size:9px;color:var(--mid);margin-right:4px">'+x.v+'</span>':'')+'<span style="font-size:10px;color:'+x.c+'">'+x.s+'</span></div>'
-    +'</div>').join('');
-  if(last){const bp=byP[last.pattern];
-    html+='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin:13px 0 7px">▸ 最新形態信號</div>'
-      +'<div style="background:#091525;border-radius:8px;border:1px solid #1a3a5f;padding:10px">'
-        +'<div style="font-size:13px;font-weight:bold;margin-bottom:3px">'+last.pattern+'</div>'
-        +'<div style="font-size:9px;color:var(--dim);margin-bottom:7px">'+last.date+' · 強度 '+last.str+'/'+last.maxStr+'</div>'
-        +'<div style="background:var(--bd);border-radius:2px;height:4px;margin-bottom:9px">'
-          +'<div style="width:'+(last.str/last.maxStr*100).toFixed(0)+'%;height:100%;border-radius:2px;background:'+(last.str/last.maxStr>0.7?'#22c55e':last.str/last.maxStr>0.5?'#f59e0b':'#ef4444')+'"></div>'
-        +'</div>'
-        +'<div style="margin-bottom:10px">'+last.conds.map(c=>'<div style="font-size:10px;color:#22c55e;padding:1.5px 0">✓ '+c+'</div>').join('')+'</div>'
-        +'<div style="background:#0a1424;border-radius:6px;padding:9px">'
-          +[['進場價格',fp(last.entry),'#60a5fa',''],['止盈目標 TP',fp(last.tp),'#22c55e','+'+last.tpPct+'%'],['止損位置 SL',fp(last.sl),'#ef4444','-'+last.slPct+'%']].map(([l,v,c,tag])=>
-            '<div style="display:flex;justify-content:space-between;padding:4px 0">'
-              +'<span style="font-size:9px;color:var(--dim)">'+l+'</span>'
-              +'<span style="font-size:12px;font-weight:bold;color:'+c+'">'+v+(tag?' <span style="font-size:9px;opacity:.7">'+tag+'</span>':'')+'</span>'
-            +'</div>').join('')
-          +'<div style="border-top:1px solid var(--bd);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between">'
-            +'<span style="font-size:9px;color:var(--dim)">風報比 R:R</span>'
-            +'<span style="font-size:12px;color:#f59e0b;font-weight:bold">1:'+(last.tpPct/last.slPct).toFixed(1)+'</span>'
-          +'</div>'
-        +'</div>'
-        +(bp?'<div style="margin-top:8px;background:#0a1424;border-radius:6px;padding:8px;text-align:center">'
-            +'<div style="font-size:9px;color:var(--dim);margin-bottom:2px">此形態歷史勝率</div>'
-            +'<div style="font-size:24px;font-weight:bold;color:'+(bp.w/bp.t>0.5?'#22c55e':'#ef4444')+'">'+(bp.w/bp.t*100).toFixed(0)+'%</div>'
-            +'<div style="font-size:9px;color:#2d4156">'+bp.w+'/'+bp.t+' 次達標</div>'
-          +'</div>':'')
-      +'</div>';}
-  html+='<div style="margin:12px 0 6px;font-size:9px;color:#2d4156">▸ 歷史信號 ('+S.sigs.length+')</div>'
-    +S.sigs.slice().reverse().slice(0,8).map(s=>{
-      const bt=S.btR.find(r=>r.index===s.index);
-      const col=bt?.result==='WIN'?'#22c55e':bt?.result==='LOSS'?'#ef4444':'#2d4156';
-      return'<div style="background:var(--bg);border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid '+col+'">'
-        +'<div style="display:flex;justify-content:space-between">'
-          +'<span style="font-size:9px;color:var(--dim)">'+s.date+' '+s.pattern+'</span>'
-          +(bt?'<span style="font-size:10px;font-weight:bold;color:'+col+'">'+(bt.pnl>0?'+':'')+bt.pnl+'%</span>':'')
-        +'</div>'
-        +'<div style="font-size:9px;color:#2d4156;margin-top:1px">進:'+fp(s.entry)+' 盈:'+fp(s.tp)+' 損:'+fp(s.sl)+'</div>'
-      +'</div>';}).join('')
-    +(!S.sigs.length&&S.data.length?'<div style="font-size:10px;color:#2d4156;text-align:center;padding:20px 0">目前無滿足條件的形態信號</div>':'');
-  document.getElementById('panel-content').innerHTML=html;}
-
-/* ══ FETCH & ACTIONS ════════════════════════════════════ */
-async function fetchData(){
-  S.loading=true;S.error=null;renderAll();
-  try{
-    const ex=EX[S.ex],sym=ex.sym(S.coin),n=S.ex==='binance'?1000:({'3M':100,'1M':300,'1W':300,'1D':300,'4H':300,'1H':300,'15M':300}[S.tf]);
-    const data=await ex.get(sym,S.tf,n);
-    if(!data||data.length<30)throw new Error('資料不足，請稍後重試');
-    S.data=data;compute();S.updated=new Date().toLocaleTimeString();
-  }catch(e){
-    const msg=e.message||'載入失敗';
-    S.error=(msg.includes('400')||msg.includes('HTTP 4'))?
-      '找不到 '+EX[S.ex].sym(S.coin)+' ── 請確認是加密幣代號（如 BTC、PEPE），股票不適用':msg;
-  }finally{S.loading=false;renderAll();}
-}
-function setEx(k){S.ex=k;fetchData();}
-function setTF(t){S.tf=t;fetchData();}
-function setTab(t){S.tab=t;renderCharts();}
-function setRange(r){S.range=r;renderCharts();}
-function toggleInd(k){IND[k]=!IND[k];renderCharts();}
+/* ═══ STATE ═══ */
+var S={ex:'binance',coin:'BTC',tf:'1D',range:'recent',data:[],loading:false,error:null,tab:'chart',updated:null,cl:[],vl:[],macd:{line:[],sig:[],hist:[]},rsi:[],rsiSlow:[],atrA:[],ma200:[],ma50:[],emas:{},bb:{up:[],mid:[],lo:[]},poc:null,sigs:[],btR:[],riskA:[],entryMarkers:[],exitMarkers:[]};
+var IND={ema100:true,ema200:true,ema300:false,ema500:false,bb:true,poc:true,vol:true,macd:true,rsi:true,risk:true,signals:true};
+var sideTab='all',top100=[],sbLoading=true,scanResults={},scanRunning=false,lastScanTime=null;
+var favs=JSON.parse(localStorage.getItem('kl_favs')||'[]');
+var chartW=640,chartH=300,zoomLevel=1.0,panOffset=0;
+/* ═══ UTILS ═══ */
+function fd(ts){var d=new Date(ts);return ('0'+(d.getMonth()+1)).slice(-2)+'/'+('0'+d.getDate()).slice(-2)}
+function fp(v){if(v==null)return'-';var a=Math.abs(v);if(a>=1e5)return(v/1e3).toFixed(0)+'K';if(a>=1e4)return v.toFixed(0);if(a>=100)return v.toFixed(2);return v.toFixed(4)}
+function fpS(v){if(!v)return'-';var a=Math.abs(v);if(a>=1e4)return(v/1e3).toFixed(0)+'K';if(a>=100)return v.toFixed(0);if(a>=1)return v.toFixed(2);if(a>=1e-4)return v.toFixed(4);return v.toExponential(2)}
+/* ═══ MATH ═══ */
+function _ema(arr,p){var k=2/(p+1),res=[],e=null;for(var i=0;i<arr.length;i++){if(arr[i]==null){res.push(null);continue}if(e===null){if(i<p-1){res.push(null);continue}e=arr.slice(i-p+1,i+1).reduce(function(a,b){return a+b})/p}else e=arr[i]*k+e*(1-k);res.push(+e.toFixed(8))}return res}
+function _sma(arr,p){return arr.map(function(_,i){return i<p-1?null:+(arr.slice(i-p+1,i+1).reduce(function(a,b){return a+b})/p).toFixed(6)})}
+function _macd(cl){var l12=_ema(cl,CFG.macd_fast),l26=_ema(cl,CFG.macd_slow);var line=l12.map(function(v,i){return v!=null&&l26[i]!=null?+(v-l26[i]).toFixed(8):null});var sig=_ema(line.map(function(v){return v!=null?v:0}),CFG.macd_signal);return{line:line,sig:sig,hist:line.map(function(v,i){return v!=null&&sig[i]!=null?+(v-sig[i]).toFixed(8):null})}}
+function _rsi(cl,p){p=p||CFG.rsi_period;return cl.map(function(_,i){if(i<p)return null;var g=0,l=0;for(var j=i-p+1;j<=i;j++){var d=cl[j]-cl[j-1];d>0?g+=d:l-=d}var ag=g/p,al=l/p;return al===0?100:+(100-100/(1+ag/al)).toFixed(2)})}
+function _rsiSlow(r){return _sma(r.map(function(v){return v!=null?v:50}),CFG.rsi_slow_period)}
+function _atr(D,p){p=p||CFG.atr_period;var tr=D.map(function(c,i){if(i===0)return c.high-c.low;var prev=D[i-1].close;return Math.max(c.high-c.low,Math.abs(c.high-prev),Math.abs(c.low-prev))});var res=[];for(var i=0;i<tr.length;i++){if(i<p-1){res.push(null);continue}if(i===p-1){res.push(tr.slice(0,p).reduce(function(a,b){return a+b})/p);continue}res.push(+(res[i-1]*(p-1)/p+tr[i]/p).toFixed(8))}return res}
+function _bb(cl,p,m){p=p||CFG.bb_period;m=m||CFG.bb_mult;var mid=_sma(cl,p),up=[],lo=[];cl.forEach(function(_,i){if(i<p-1){up.push(null);lo.push(null);return}var sl=cl.slice(i-p+1,i+1),mn=mid[i];var sd=Math.sqrt(sl.reduce(function(s,v){return s+(v-mn)*(v-mn)},0)/p);up.push(+(mn+m*sd).toFixed(6));lo.push(+(mn-m*sd).toFixed(6))});return{up:up,mid:mid,lo:lo}}
+function _poc(D,look){look=look||CFG.poc_lookback;var rc=D.slice(-look);var all=[];rc.forEach(function(c){all.push(c.high,c.low)});var mn=Math.min.apply(null,all),mx=Math.max.apply(null,all);var step=(mx-mn)/CFG.poc_bins||0.01,map={};rc.forEach(function(c){var lv=Math.max(1,Math.round((c.high-c.low)/step));for(var l=0;l<=lv;l++){var p=+(c.low+l*step).toFixed(6);map[p]=(map[p]||0)+c.volume/(lv+1)}});var mv=0,poc=mn;Object.keys(map).forEach(function(p){if(map[p]>mv){mv=map[p];poc=+p}});return poc}
+/* ═══ SIGNALS ═══ */
+function detectSignals(){var D=S.data,rsiA=S.rsi,rsiSlowA=S.rsiSlow,macdO=S.macd,ma200A=S.ma200,bbO=S.bb,volA=S.vl,atrArr=S.atrA;var out=[];
+for(var i=Math.max(15,CFG.atr_period);i<D.length-1;i++){var c=D[i],p=D[i-1],body=Math.abs(c.close-c.open),bull=c.close>=c.open;var lw=Math.min(c.open,c.close)-c.low,uw=c.high-Math.max(c.open,c.close);
+var avV=0;for(var vi=Math.max(0,i-CFG.vol_lookback);vi<i;vi++)avV+=volA[vi];avV=avV/CFG.vol_lookback||1;var vs=c.volume>avV*CFG.vol_surge_mult;
+var a200=ma200A[i]!=null&&c.close>ma200A[i],n200=ma200A[i]!=null&&Math.abs(c.low-ma200A[i])/ma200A[i]<CFG.ma200_proximity;
+var r=rsiA[i],r1=rsiA[i-1],rSl=rsiSlowA[i],rAbv=r!=null&&rSl!=null&&r>rSl;
+var ml=macdO.line[i],ms=macdO.sig[i],mh=macdO.hist[i],mhp=macdO.hist[i-1];
+var atr=atrArr[i];var hit=null;
+if(bull&&lw>CFG.hammer_shadow_ratio*body&&uw<CFG.hammer_wick_ratio*body){var s=2,co=['下影線>='+CFG.hammer_shadow_ratio+'倍實體','看漲收盤'];if(r!=null&&r<CFG.rsi_oversold+5){if(rAbv){co.push('RSI超賣回升 快>慢✓');s+=2}else{co.push('RSI超賣');s+=1}}if(bbO.lo[i]!=null&&c.low<=bbO.lo[i]){co.push('觸及布林下軌');s++}if(a200||n200){co.push('MA200支撐');s++}if(vs){co.push('量能放大');s++}if(s>=CFG.min_signal_score)hit={n:'🔨 強力錘子線',co:co,s:s,ms:7}}
+if(!hit&&bull&&p.close<p.open&&c.open<=p.close*CFG.engulf_tolerance&&c.close>=p.open){var s=2,co=['看漲吞噬型態'];if(r!=null&&r<CFG.rsi_engulf_max){if(rAbv){co.push('RSI快>慢✓');s+=2}else s+=1}if(mh!=null&&mhp!=null&&mh>0&&mhp<0){co.push('MACD柱轉正');s+=2}if(a200){co.push('MA200多方');s++}if(vs){co.push('量能確認');s++}if(s>=CFG.min_signal_score)hit={n:'🟢 看漲吞噬',co:co,s:s,ms:7}}
+if(!hit&&ml!=null&&ms!=null&&macdO.line[i-1]!=null&&macdO.sig[i-1]!=null&&ml>ms&&macdO.line[i-1]<=macdO.sig[i-1]){var s=2,co=['MACD黃金交叉'];if(r!=null&&r>CFG.rsi_macd_lo&&r<CFG.rsi_macd_hi){if(rAbv){co.push('RSI動能 快>慢✓');s+=2}else s+=1}if(a200){co.push('MA200多頭');s+=2}if(vs){co.push('量能確認');s++}if(mh!=null&&mhp!=null&&mh>mhp){co.push('MACD柱擴張');s++}if(s>=CFG.min_signal_score)hit={n:'📈 MACD黃金交叉',co:co,s:s,ms:8}}
+if(!hit&&bbO.up[i]!=null&&bbO.up[i-1]!=null&&c.close>bbO.up[i]&&p.close<=bbO.up[i-1]){var s=2,co=['突破布林上軌'];if(vs){co.push('量能放大確認');s+=2}if(r!=null&&r>CFG.rsi_bb_lo&&r<CFG.rsi_bb_hi){if(rAbv){co.push('RSI強勢 快>慢✓');s+=2}else s+=1}if(a200){co.push('MA200多頭');s++}if(mh!=null&&mh>0){co.push('MACD正區');s++}if(s>=CFG.min_signal_score)hit={n:'🚀 布林突破',co:co,s:s,ms:8}}
+if(!hit&&r1!=null&&r!=null&&r1<CFG.rsi_oversold&&r>CFG.rsi_oversold+2&&bull){var s=2,co=['RSI超賣回升'];if(rAbv){co.push('RSI快線上穿慢線✓');s+=2}if(n200){co.push('MA200支撐');s+=2}if(bbO.lo[i-1]!=null&&p.low<=bbO.lo[i-1]){co.push('布林下軌彈升');s++}if(vs){co.push('量能放大');s++}if(s>=CFG.min_signal_score)hit={n:'🔄 RSI反彈',co:co,s:s,ms:7}}
+if(!hit&&i>=2){var c0=D[i],c1=D[i-1],c2=D[i-2];if(c0.close>c0.open&&c1.close>c1.open&&c2.close>c2.open&&c0.close>c1.close&&c1.close>c2.close&&Math.abs(c0.open-c1.close)/c1.close<CFG.tws_gap_pct){var s=3,co=['三白兵型態'];if(vs){co.push('量能放大');s++}if(a200){co.push('MA200多方');s++}if(r!=null&&r<CFG.rsi_overbought){if(rAbv){co.push('RSI未超買 快>慢✓');s+=2}else s+=1}if(s>=CFG.min_signal_score)hit={n:'🏛️ 三白兵',co:co,s:s,ms:7}}}
+if(hit&&atr!=null&&atr>0){var ep=(CFG.entry_mode==='next_open'&&i+1<D.length)?D[i+1].open:c.close;var tp=+(ep+CFG.atr_tp_mult*atr).toFixed(6),sl=+(ep-CFG.atr_sl_mult*atr).toFixed(6);out.push({index:i,date:c.date,close:c.close,pattern:hit.n,conds:hit.co,str:hit.s,maxStr:hit.ms,entry:+ep.toFixed(6),tp:tp,sl:sl,tpPct:+((tp-ep)/ep*100).toFixed(2),slPct:+((ep-sl)/ep*100).toFixed(2),atr:+atr.toFixed(6),entryMode:CFG.entry_mode==='next_open'?'下根開盤':'當根收盤'})}}
+var ded=[];out.forEach(function(s){if(!ded.length||s.index-ded[ded.length-1].index>5)ded.push(s);else if(s.str>ded[ded.length-1].str)ded[ded.length-1]=s});S.sigs=ded}
+/* ═══ BACKTEST ═══ */
+function doBacktest(){S.btR=S.sigs.map(function(s){var D=S.data,entryBar=CFG.entry_mode==='next_open'?s.index+1:s.index;if(entryBar>=D.length)return null;var ep=s.entry,curSL=s.sl,hw=ep,maxB=CFG.exit_mode==='trailing'?CFG.max_hold_bars:CFG.fixed_hold_bars;
+for(var i=entryBar+1;i<D.length&&i<=entryBar+maxB;i++){var bar=D[i];if(bar.low<=curSL){var ex=+curSL.toFixed(6),pnl=+((ex-ep)/ep*100).toFixed(2);return Object.assign({},s,{result:pnl>=0?'WIN':'LOSS',exit:ex,bars:i-entryBar,pnl:pnl,exitType:hw>ep?'移動停損':'初始停損'})}if(bar.high>=s.tp){var pnl=+((s.tp-ep)/ep*100).toFixed(2);return Object.assign({},s,{result:'WIN',exit:s.tp,bars:i-entryBar,pnl:pnl,exitType:'止盈達標'})}if(CFG.exit_mode==='trailing'&&bar.high>hw){hw=bar.high;var nsl=+(hw-CFG.atr_trail_mult*(S.atrA[i]||s.atr)).toFixed(6);if(nsl>curSL)curSL=nsl}}
+var last=D[Math.min(entryBar+maxB,D.length-1)],pnl=+((last.close-ep)/ep*100).toFixed(2);return Object.assign({},s,{result:pnl>=0?'WIN':'LOSS',exit:+last.close.toFixed(6),bars:maxB,pnl:pnl,exitType:'持倉到期'})}).filter(function(r){return r!=null})}
+function bStats(){var wins=S.btR.filter(function(r){return r.result==='WIN'}).length,tot=S.btR.length;var wr=tot?+(wins/tot*100).toFixed(1):0;var avgW=wins?+(S.btR.filter(function(r){return r.result==='WIN'}).reduce(function(a,r){return a+r.pnl},0)/wins).toFixed(2):0;var avgL=(tot-wins)?+(S.btR.filter(function(r){return r.result==='LOSS'}).reduce(function(a,r){return a+r.pnl},0)/(tot-wins)).toFixed(2):0;var byP={};S.btR.forEach(function(r){if(!byP[r.pattern])byP[r.pattern]={w:0,t:0};byP[r.pattern].t++;if(r.result==='WIN')byP[r.pattern].w++});return{wins:wins,tot:tot,wr:wr,avgW:avgW,avgL:avgL,byP:byP}}
+/* ═══ COMPUTE ═══ */
+function compute(){var D=S.data;S.cl=D.map(function(d){return d.close});S.vl=D.map(function(d){return d.volume});S.macd=S.cl.length?_macd(S.cl):{line:[],sig:[],hist:[]};S.rsi=S.cl.length?_rsi(S.cl):[];S.rsiSlow=S.rsi.length?_rsiSlow(S.rsi):[];S.atrA=D.length>=CFG.atr_period?_atr(D):D.map(function(){return null});S.emas={};CFG.ema_periods.forEach(function(p){S.emas[p]=S.cl.length>=p?_ema(S.cl,p):S.cl.map(function(){return null})});S.ma200=S.emas[200]||S.cl.map(function(){return null});S.ma50=S.emas[100]||S.cl.map(function(){return null});S.bb=S.cl.length>=CFG.bb_period?_bb(S.cl):{up:[],mid:[],lo:[]};S.poc=D.length>=CFG.poc_lookback?_poc(D):null;detectSignals();doBacktest();
+// Risk Index
+S.riskA=S.cl.map(function(_,i){if(i<20)return null;var risk=50,r=S.rsi[i],rSl=S.rsiSlow[i],mh=S.macd.hist[i],ml=S.macd.line[i],ms=S.macd.sig[i],m2=S.ma200[i],px=S.cl[i],bbu=S.bb.up[i],bbl=S.bb.lo[i],atr=S.atrA[i];var avV=0;for(var j=Math.max(0,i-CFG.vol_lookback);j<i;j++)avV+=S.vl[j];avV=avV/CFG.vol_lookback||1;if(r!=null){if(r>80)risk+=20;else if(r>70)risk+=12;else if(r>60)risk+=5;if(r<20)risk+=15;else if(r<30)risk+=8;if(rSl!=null&&r<rSl)risk+=5}if(mh!=null){if(mh<0)risk+=8;if(ml!=null&&ms!=null&&ml<ms)risk+=7;var mp=S.macd.hist[i-1];if(mp!=null&&mh<mp&&mh<0)risk+=5}if(m2!=null){if(px<m2)risk+=10;if(px<m2*0.95)risk+=5}if(bbu!=null&&px>bbu)risk+=5;if(bbl!=null&&px<bbl)risk+=5;if(atr!=null&&i>=2){var pa=S.atrA[i-1];if(pa&&atr>pa*1.5)risk+=8;else if(pa&&atr>pa*1.2)risk+=4}if(S.vl[i]/avV>2.5)risk+=5;else if(S.vl[i]/avV>1.8)risk+=3;var drops=0;for(var j=i;j>Math.max(0,i-5);j--)if(S.cl[j]<S.cl[j-1])drops++;if(drops>=4)risk+=8;else if(drops>=3)risk+=4;return Math.max(0,Math.min(100,Math.round(risk)))});
+// Entry/Exit markers
+S.entryMarkers=[];S.exitMarkers=[];var bp=bStats().byP;S.sigs.forEach(function(sig){var p=bp[sig.pattern];if(p&&p.t>=2&&(p.w/p.t)>=0.6)S.entryMarkers.push({index:sig.index,date:sig.date,price:sig.entry,pattern:sig.pattern,wr:+(p.w/p.t*100).toFixed(0),entry:sig.entry,tp:sig.tp,sl:sig.sl})});S.entryMarkers.forEach(function(em){for(var i=em.index+1;i<Math.min(S.data.length,em.index+CFG.max_hold_bars);i++){if(S.riskA[i]!=null&&S.riskA[i]>=75){S.exitMarkers.push({index:i,date:S.data[i].date,price:S.data[i].close,risk:S.riskA[i],reason:S.riskA[i]>=85?'極高風險':'高風險',entryPattern:em.pattern});break}}})}
+/* ═══ SVG HELPERS ═══ */
+function lp(arr,tx,ty){var d='';for(var i=0;i<arr.length;i++){if(arr[i]!=null)d+=(d?'L':'M')+tx(i).toFixed(1)+','+ty(arr[i]).toFixed(1)}return d}
+function fmtP(v){var a=Math.abs(v);if(a>=1e5)return(v/1e3).toFixed(0)+'K';if(a>=1e4)return(v/1e3).toFixed(1)+'K';if(a>=100)return v.toFixed(0);return v.toFixed(4)}
+/* ═══ SVG CANDLE ═══ */
+function svgCandle(C,si){
+var P={t:12,r:76,b:18,l:6},w=chartW,h=chartH,n=C.length;if(!n)return'';
+var bw=Math.max(2,((w-P.l-P.r)/n)-0.8),cw=w-P.l-P.r,ch=h-P.t-P.b;
+var mn=1e18,mx=-1e18;C.forEach(function(c){mn=Math.min(mn,c.low);mx=Math.max(mx,c.high)});
+if(IND.bb){S.bb.up.slice(si,si+n).concat(S.bb.lo.slice(si,si+n)).forEach(function(v){if(v!=null){mn=Math.min(mn,v);mx=Math.max(mx,v)}})}
+CFG.ema_periods.forEach(function(p){if(IND['ema'+p]&&S.emas[p]){S.emas[p].slice(si,si+n).forEach(function(v){if(v!=null){mn=Math.min(mn,v);mx=Math.max(mx,v)}})}});
+var pad=(mx-mn)*0.04;mn-=pad;mx+=pad;var R=mx-mn||1;
+var tx=function(i){return P.l+(i+0.5)*(cw/n)},ty=function(p){return P.t+ch-((p-mn)/R)*ch};
+var s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%"><rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#000" rx="3"/>';
+var gl=[0,.25,.5,.75,1];for(var gi=0;gi<gl.length;gi++){var gp=mn+gl[gi]*R,gy=ty(gp).toFixed(1);s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+gy+'" y2="'+gy+'" stroke="#12213a" stroke-width="1" stroke-dasharray="4 3"/><text x="'+(P.l+cw+4)+'" y="'+(+gy+4)+'" fill="#3a5070" font-size="9" font-family="monospace">'+fmtP(gp)+'</text>'}
+// POC
+if(IND.poc&&S.poc!=null){var py=ty(S.poc).toFixed(1);s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+py+'" y2="'+py+'" stroke="#9333ea" stroke-width="1.5" stroke-dasharray="6 3" opacity=".85"/><text x="'+(P.l+cw+4)+'" y="'+(+py-2)+'" fill="#9333ea" font-size="8" font-family="monospace">POC '+fmtP(S.poc)+'</text>'}
+// BB
+if(IND.bb){var bUp=S.bb.up.slice(si,si+n),bLo=S.bb.lo.slice(si,si+n),bMid=(S.bb.mid||[]).slice(si,si+n);var bUP=lp(bUp,tx,ty),bLP=lp(bLo,tx,ty),bMP=lp(bMid,tx,ty);if(bUP)s+='<path d="'+bUP+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';if(bLP)s+='<path d="'+bLP+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';if(bMP)s+='<path d="'+bMP+'" fill="none" stroke="#6366f1" stroke-width="1" opacity=".45"/>'}
+// EMAs
+var emaC={'100':'#38bdf8','200':'#f59e0b','300':'#a78bfa','500':'#ef4444'};
+CFG.ema_periods.forEach(function(p){if(!IND['ema'+p]||!S.emas[p])return;var ep=lp(S.emas[p].slice(si,si+n),tx,ty);if(ep)s+='<path d="'+ep+'" fill="none" stroke="'+(emaC[p]||'#5a7394')+'" stroke-width="'+(p===200?'1.5':'1.2')+'" opacity=".85"/>'});
+// Candles
+C.forEach(function(c,i){var x=tx(i),col=c.close>=c.open?'#22c55e':'#ef4444';var bt=ty(Math.max(c.open,c.close)),bb2=ty(Math.min(c.open,c.close));s+='<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+ty(c.high).toFixed(1)+'" y2="'+ty(c.low).toFixed(1)+'" stroke="'+col+'" stroke-width="1"/><rect x="'+(x-bw/2).toFixed(1)+'" y="'+bt.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(1,bb2-bt).toFixed(1)+'" fill="'+col+'" opacity=".9"/>'});
+// Signal triangles
+if(IND.signals){S.sigs.forEach(function(sig){var li=sig.index-si;if(li<0||li>=n)return;var x=tx(li),y=ty(C[li].low)+13;s+='<polygon points="'+x.toFixed(1)+','+y.toFixed(1)+' '+(x-5).toFixed(1)+','+(y+9).toFixed(1)+' '+(x+5).toFixed(1)+','+(y+9).toFixed(1)+'" fill="#f59e0b" opacity=".95"/>'});
+// BUY markers
+S.entryMarkers.forEach(function(em){var li=em.index-si;if(li<0||li>=n)return;var x=tx(li),y=ty(C[li].low)+24;s+='<rect x="'+(x-14).toFixed(1)+'" y="'+y.toFixed(1)+'" width="28" height="12" rx="2" fill="#22c55e" opacity=".9"/><text x="'+x.toFixed(1)+'" y="'+(y+9).toFixed(1)+'" text-anchor="middle" fill="#000" font-size="7" font-weight="bold" font-family="monospace">BUY '+em.wr+'%</text>'});
+// EXIT markers
+S.exitMarkers.forEach(function(ex){var li=ex.index-si;if(li<0||li>=n)return;var x=tx(li),y=ty(C[li].high)-18;s+='<rect x="'+(x-15).toFixed(1)+'" y="'+y.toFixed(1)+'" width="30" height="12" rx="2" fill="#ef4444" opacity=".9"/><text x="'+x.toFixed(1)+'" y="'+(y+9).toFixed(1)+'" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold" font-family="monospace">EXIT '+ex.risk+'</text>'})}
+// Date labels
+var ev=Math.max(1,Math.floor(n/(n>400?12:8)));C.forEach(function(c,i){if(i%ev!==0)return;s+='<text x="'+tx(i).toFixed(1)+'" y="'+(P.t+ch+13)+'" text-anchor="middle" fill="#253a52" font-size="9" font-family="monospace">'+c.date+'</text>'});
+return s+'</svg>'}
+/* ═══ SVG VOL/MACD/RSI/RISK ═══ */
+function svgSub(sub,type,w,h){var P={t:4,r:76,b:4,l:type==='vol'?6:type==='macd'?38:28},cw=w-P.l-P.r,ch=h-P.t-P.b,n=sub.length;if(!n)return'';var tx=function(i){return P.l+(i+0.5)*(cw/n)};var bw=Math.max(2,cw/n-0.8);
+var s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%"><rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#000" rx="3"/>';
+if(type==='vol'){var maxV=0;sub.forEach(function(d){if(d.vol>maxV)maxV=d.vol});sub.forEach(function(d,i){var x=tx(i),bh=Math.max(1,(d.vol/maxV)*ch);s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+(P.t+ch-bh).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+(d.bull?'#22c55e':'#ef4444')+'" opacity=".45" rx="1"/>'});return s+'</svg>'}
+if(type==='rsi'||type==='risk'){var ty=function(v){return P.t+ch-((v/100)*ch)};var zones=type==='rsi'?[[70,'#ef4444'],[50,'#2d4156'],[30,'#22c55e']]:[[75,'#ef4444'],[50,'#f97316'],[25,'#22c55e']];if(type==='rsi'){s+='<rect x="'+P.l+'" y="'+ty(70).toFixed(1)+'" width="'+cw+'" height="'+(ty(100)-ty(70)).toFixed(1)+'" fill="rgba(239,68,68,0.07)"/><rect x="'+P.l+'" y="'+ty(30).toFixed(1)+'" width="'+cw+'" height="'+(ty(0)-ty(30)).toFixed(1)+'" fill="rgba(34,197,94,0.05)"/>'}else{s+='<rect x="'+P.l+'" y="'+ty(100).toFixed(1)+'" width="'+cw+'" height="'+(ty(75)-ty(100)).toFixed(1)+'" fill="rgba(239,68,68,0.08)"/><rect x="'+P.l+'" y="'+ty(25).toFixed(1)+'" width="'+cw+'" height="'+(ty(0)-ty(25)).toFixed(1)+'" fill="rgba(34,197,94,0.05)"/>'}zones.forEach(function(z){var y=ty(z[0]).toFixed(1);s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="'+z[1]+'" stroke-width="1" stroke-dasharray="3 3" opacity=".4"/><text x="'+(P.l+cw+4)+'" y="'+(+y+4)+'" fill="'+z[1]+'" font-size="8" font-family="monospace">'+z[0]+'</text>'});
+var key=type==='rsi'?'rsi':'risk';var pp=lp(sub.map(function(d){return d[key]}),tx,ty);if(pp)s+='<path d="'+pp+'" fill="none" stroke="'+(type==='rsi'?'#a78bfa':'#f97316')+'" stroke-width="1.5"/>';
+if(type==='rsi'){var sp=lp(sub.map(function(d){return d.rsiSlow}),tx,ty);if(sp)s+='<path d="'+sp+'" fill="none" stroke="#f97316" stroke-width="1" stroke-dasharray="4 2"/>'}
+if(type==='risk'){for(var i=1;i<n;i++){var r0=sub[i-1].risk,r1=sub[i].risk;if(r0==null||r1==null)continue;var col=r1>=75?'#ef4444':r1>=50?'#f97316':r1>=25?'#f59e0b':'#22c55e';s+='<line x1="'+tx(i-1).toFixed(1)+'" y1="'+ty(r0).toFixed(1)+'" x2="'+tx(i).toFixed(1)+'" y2="'+ty(r1).toFixed(1)+'" stroke="'+col+'" stroke-width="2"/>'}}
+return s+'</svg>'}
+if(type==='macd'){var vals=[];sub.forEach(function(d){if(d.hist!=null&&isFinite(d.hist))vals.push(d.hist);if(d.macd!=null&&isFinite(d.macd))vals.push(d.macd);if(d.sig!=null&&isFinite(d.sig))vals.push(d.sig)});if(!vals.length)return s+'</svg>';var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);var pad2=(mx-mn)*0.12||0.001;mn-=pad2;mx+=pad2;var R=mx-mn||1;var ty=function(v){return P.t+ch-((v-mn)/R)*ch};var zY=ty(0);[mn,0,mx].forEach(function(v){var y=ty(v).toFixed(1);s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="'+(v===0?'#2d4156':'#12213a')+'" stroke-width="'+(v===0?1.5:1)+'" '+(v!==0?'stroke-dasharray="3 3"':'')+'/>'});
+sub.forEach(function(d,i){if(d.hist==null||!isFinite(d.hist))return;var x=tx(i),hY=ty(d.hist),top=Math.min(hY,zY),ht=Math.max(1,Math.abs(hY-zY));s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ht.toFixed(1)+'" fill="'+(d.hist>=0?'#22c55e':'#ef4444')+'" opacity=".7" rx="1"/>'});
+var mp=lp(sub.map(function(d){return d.macd}),tx,ty);if(mp)s+='<path d="'+mp+'" fill="none" stroke="#60a5fa" stroke-width="1.5"/>';var sp2=lp(sub.map(function(d){return d.sig}),tx,ty);if(sp2)s+='<path d="'+sp2+'" fill="none" stroke="#f97316" stroke-width="1"/>';return s+'</svg>'}
+return s+'</svg>'}
+/* ═══ INDICATOR TOGGLE BAR ═══ */
 function indBar(){
   var h='<div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px;align-items:center">';
   h+='<span style="font-size:9px;color:#2d4156;margin-right:2px">主圖:</span>';
   var main=[['ema100','E100','#38bdf8'],['ema200','E200','#f59e0b'],['ema300','E300','#a78bfa'],['ema500','E500','#ef4444'],['bb','BB','#3b82f6'],['poc','POC','#9333ea'],['signals','信號','#f59e0b']];
-  for(var i=0;i<main.length;i++){var k=main[i][0],l=main[i][1],col=main[i][2],on=IND[k];
-    h+='<button onclick="toggleInd(\''+k+'\')" style="padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;font-size:10px;border:1px solid '+(on?col:'#0d1825')+';background:'+(on?col+'18':'transparent')+';color:'+(on?col:'#1e2a3a')+'">'+l+'</button>';}
+  for(var i=0;i<main.length;i++){var k=main[i][0],l=main[i][1],col=main[i][2],on=IND[k];h+='<button class="tg'+(on?' on':'')+'" onclick="IND.'+k+'=!IND.'+k+';renderAll()" style="'+(on?'border-color:'+col+';background:'+col+'18;color:'+col:'')+'">'+l+'</button>'}
   h+='</div><div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px;align-items:center">';
   h+='<span style="font-size:9px;color:#2d4156;margin-right:2px">副圖:</span>';
   var sub=[['vol','VOL','#5a7394'],['macd','MACD','#60a5fa'],['rsi','RSI','#a78bfa'],['risk','風險','#ef4444']];
-  for(var i=0;i<sub.length;i++){var k=sub[i][0],l=sub[i][1],col=sub[i][2],on=IND[k];
-    h+='<button onclick="toggleInd(\''+k+'\')" style="padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;font-size:10px;border:1px solid '+(on?col:'#0d1825')+';background:'+(on?col+'18':'transparent')+';color:'+(on?col:'#1e2a3a')+'">'+l+'</button>';}
-  h+='</div>';
-  return h;
+  for(var i=0;i<sub.length;i++){var k=sub[i][0],l=sub[i][1],col=sub[i][2],on=IND[k];h+='<button class="tg'+(on?' on':'')+'" onclick="IND.'+k+'=!IND.'+k+';renderAll()" style="'+(on?'border-color:'+col+';background:'+col+'18;color:'+col:'')+'">'+l+'</button>'}
+  h+='</div>';return h;
 }
-
-function applyCfg(){
-  const keys=['atr_period','atr_sl_mult','atr_tp_mult','atr_trail_mult',
-    'rsi_period','rsi_slow_period','rsi_oversold','rsi_overbought',
-    'vol_lookback','vol_surge_mult','ma200_proximity','min_signal_score','max_hold_bars'];
-  keys.forEach(k=>{
-    const el=document.getElementById('cfg_'+k);
-    if(el){const v=parseFloat(el.value);if(!isNaN(v))CFG[k]=v;}
-  });
-  compute();renderAll();
+/* ═══ DATA SLICE ═══ */
+function getDisp(){
+  var baseShow=S.range==='all'?S.data.length:({'3M':60,'1M':80,'1W':80,'1D':80,'4H':120,'1H':100,'15M':100}[S.tf]||80);
+  var zShow=Math.max(15,Math.min(S.data.length,Math.round(baseShow/zoomLevel)));
+  var maxOff=Math.max(0,S.data.length-zShow);
+  var si=Math.max(0,S.data.length-zShow+Math.max(-maxOff,Math.min(0,panOffset)));
+  var candles=S.data.slice(si,si+zShow);
+  var sub=candles.map(function(c,ii){return{date:c.date,vol:c.volume,bull:c.close>=c.open,macd:S.macd.line[si+ii],sig:S.macd.sig[si+ii],hist:S.macd.hist[si+ii],rsi:S.rsi[si+ii],rsiSlow:S.rsiSlow[si+ii],risk:S.riskA[si+ii]}});
+  return{si:si,candles:candles,sub:sub};
 }
-function resetCfg(){
-  Object.assign(CFG,{atr_period:14,atr_sl_mult:1.5,atr_tp_mult:3.0,atr_trail_mult:2.0,
-    rsi_period:14,rsi_slow_period:9,rsi_oversold:30,rsi_overbought:70,rsi_engulf_max:55,
-    rsi_macd_lo:45,rsi_macd_hi:72,rsi_bb_lo:55,rsi_bb_hi:78,
-    vol_lookback:10,vol_surge_mult:1.4,ema_periods:[100,200,300,500],ma200_proximity:0.015,
-    bb_period:20,bb_mult:2,macd_fast:12,macd_slow:26,macd_signal:9,
-    poc_lookback:60,poc_bins:50,hammer_shadow_ratio:2.5,hammer_wick_ratio:0.4,
-    engulf_tolerance:1.003,tws_gap_pct:0.006,min_signal_score:4,
-    entry_mode:'next_open',exit_mode:'trailing',max_hold_bars:120,fixed_hold_bars:30});
-  compute();renderAll();
+/* ═══ RENDER: HEADER ═══ */
+function renderHdr(){
+  var h='';Object.keys(EX).forEach(function(k){var v=EX[k];h+='<button onclick="S.ex=\''+k+'\';fetchData()" style="border:1px solid '+(S.ex===k?v.color:'#162233')+';background:'+(S.ex===k?v.color+'22':'transparent')+';color:'+(S.ex===k?v.color:'#5a7394')+'">'+v.label+'</button>'});
+  document.getElementById('ex-btns').innerHTML=h;
+  h='';COINS.forEach(function(c){h+='<button onclick="S.coin=\''+c+'\';fetchData()" style="border:1px solid '+(S.coin===c?'#1d4ed8':'#162233')+';background:'+(S.coin===c?'#1d4ed8':'transparent')+';color:'+(S.coin===c?'#fff':'#5a7394')+'">'+c+'</button>'});
+  document.getElementById('coin-btns').innerHTML=h;
+  h='';TFS.forEach(function(t){h+='<button onclick="S.tf=\''+t+'\';fetchData()" style="border:1px solid '+(S.tf===t?'#f59e0b':'#162233')+';background:'+(S.tf===t?'#f59e0b22':'transparent')+';color:'+(S.tf===t?'#f59e0b':'#5a7394')+'">'+t+'</button>'});
+  document.getElementById('tf-btns').innerHTML=h;
+  var px=S.cl[S.cl.length-1]||0,r=S.rsi[S.rsi.length-1],ml=S.macd.line[S.macd.line.length-1],ms=S.macd.sig[S.macd.sig.length-1],m2=S.ma200[S.ma200.length-1],abv=m2!=null&&px>m2;
+  var isFav=favs.indexOf(S.coin)>=0;
+  document.getElementById('stats').innerHTML='<span style="color:'+EX[S.ex].color+';font-weight:bold">'+EX[S.ex].sym(S.coin)+'</span><span onclick="toggleFav(\''+S.coin+'\')" style="cursor:pointer;color:'+(isFav?'#f59e0b':'#2d4156')+';font-size:15px">'+(isFav?'★':'☆')+'</span><span style="color:var(--dim)">現價 <span style="color:var(--text)">'+fp(px)+'</span></span><span style="color:var(--dim)">RSI <span style="color:'+(r<30?'#22c55e':r>70?'#ef4444':'#5a7394')+'">'+(r!=null?r.toFixed(1):'-')+'</span></span><span style="color:var(--dim)">MACD <span style="color:'+(ml>ms?'#22c55e':'#ef4444')+'">'+(ml==null?'…':ml>ms?'多頭↑':'空頭↓')+'</span></span><span style="color:var(--dim)">MA200 <span style="color:'+(m2?abv?'#22c55e':'#ef4444':'#2d4156')+'">'+(m2?abv?'站上↑':'跌破↓':'N/A')+'</span></span>'+(S.updated?'<span style="color:#2d4156;margin-left:auto">'+S.updated+'</span>':'');
+  document.getElementById('refresh').textContent=S.loading?'⟳ 載入中':'⟳ 刷新';
+  if(S.error){document.getElementById('err').style.display='flex';document.getElementById('err').innerHTML='<span style="color:#ef4444;font-size:11px">⚠ '+S.error+'</span><button onclick="S.error=null;S.coin=\'BTC\';fetchData()" style="border:1px solid #ef4444;background:transparent;color:#ef4444">← BTC</button>'}else document.getElementById('err').style.display='none';
+  if(S.loading&&!S.data.length){document.getElementById('loading').style.display='flex';document.getElementById('main').style.display='none';document.getElementById('load-msg').textContent='載入 '+EX[S.ex].sym(S.coin)+' '+S.tf+'…'}else{document.getElementById('loading').style.display='none';document.getElementById('main').style.display='flex'}
 }
-window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(()=>renderAll(),200);});
+/* ═══ RENDER: CHARTS ═══ */
+function renderCharts(){
+  var el=document.getElementById('charts');if(el)chartW=Math.max(280,el.getBoundingClientRect().width-14);
+  if(!S.data.length){document.getElementById('cc').innerHTML='<div style="text-align:center;padding:30vh 0;color:#2d4156"><div style="font-size:36px;margin-bottom:10px">📊</div><div>選擇幣種開始分析</div></div>';return}
+  var d=getDisp(),C=d.candles,sub=d.sub,si=d.si;
+  var h='<div style="display:flex;gap:5px;margin-bottom:6px;align-items:center;flex-wrap:wrap">';
+  h+='<button class="tab-btn'+(S.tab==='chart'?' on':'')+'" onclick="S.tab=\'chart\';renderCharts()">📈 圖表</button>';
+  h+='<button class="tab-btn'+(S.tab==='backtest'?' on':'')+'" onclick="S.tab=\'backtest\';renderCharts()">📋 回測</button>';
+  h+='<button class="tab-btn'+(S.tab==='config'?' on':'')+'" onclick="S.tab=\'config\';renderCharts()">⚙ 參數</button>';
+  h+='<span style="margin-left:8px;display:flex;gap:3px">';
+  h+='<button onclick="S.range=\'recent\';renderCharts()" style="padding:3px 8px;border-radius:3px;border:1px solid '+(S.range==='recent'?'#60a5fa':'#162233')+';background:'+(S.range==='recent'?'#60a5fa22':'transparent')+';color:'+(S.range==='recent'?'#60a5fa':'#5a7394')+'">近期</button>';
+  h+='<button onclick="S.range=\'all\';renderCharts()" style="padding:3px 8px;border-radius:3px;border:1px solid '+(S.range==='all'?'#60a5fa':'#162233')+';background:'+(S.range==='all'?'#60a5fa22':'transparent')+';color:'+(S.range==='all'?'#60a5fa':'#5a7394')+'">全部</button>';
+  h+='</span>';
+  h+='<button onclick="zoomLevel=1;panOffset=0;chartH=300;renderCharts()" style="padding:2px 6px;border:1px solid #162233;background:transparent;color:#3d5470">⊡</button>';
+  h+='<span style="margin-left:auto;font-size:11px;color:#2d4156">'+S.data.length+'根 · 顯示'+C.length+'根 · '+Math.round(zoomLevel*100)+'%</span></div>';
 
-// ── Chart zoom & pan ──
-let isDragging=false,dragStartX=0,dragStartOffset=0;
-document.addEventListener('wheel',function(e){
-  const wrap=document.getElementById('candle-wrap');
-  if(!wrap||!wrap.contains(e.target))return;
-  e.preventDefault();
-  const delta=e.deltaY>0?-0.15:0.15;
-  zoomLevel=Math.max(0.3,Math.min(5.0,zoomLevel+delta));
-  // Adjust chartH based on zoom
-  chartH=Math.max(200,Math.min(800,Math.round(300*zoomLevel)));
-  renderCharts();
-},{passive:false});
-
-document.addEventListener('mousedown',function(e){
-  const wrap=document.getElementById('candle-wrap');
-  if(!wrap||!wrap.contains(e.target))return;
-  isDragging=true;dragStartX=e.clientX;dragStartOffset=panOffset;
-  wrap.style.cursor='grabbing';
-});
-document.addEventListener('mousemove',function(e){
-  if(!isDragging)return;
-  const dx=e.clientX-dragStartX;
-  panOffset=dragStartOffset+Math.round(dx/3);
-  renderCharts();
-});
-document.addEventListener('mouseup',function(){
-  if(!isDragging)return;
-  isDragging=false;
-  const wrap=document.getElementById('candle-wrap');
-  if(wrap)wrap.style.cursor='grab';
-});
-
-// Init
-renderHdr();renderCharts();renderPanel();
-fetchData();
-fetchTop100();
-startAutoScan();
-
-// Config display helper
-function showConfig(){
-  const el=document.getElementById('panel-content');
-  const rows=[
-    ['ATR 週期','atr_period'],['ATR 停損倍數 (N)','atr_sl_mult'],
-    ['ATR 停盈倍數 (M)','atr_tp_mult'],['ATR 移動停損倍數','atr_trail_mult'],
-    ['RSI 週期','rsi_period'],['RSI 慢線週期','rsi_slow_period'],
-    ['RSI 超賣','rsi_oversold'],['RSI 超買','rsi_overbought'],
-    ['成交量回看','vol_lookback'],['成交量放大倍數','vol_surge_mult'],
-    ['MA200 接近閾值','ma200_proximity'],['進場模式','entry_mode'],
-    ['出場模式','exit_mode'],['最大持倉K棒','max_hold_bars'],
-  ];
-  const h='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 系統參數 (CFG)</div>'
-    +rows.map(([l,k])=>'<div class="prow"><span style="font-size:10px;color:var(--dim)">'+l+'</span><span style="font-size:11px;color:var(--bl)">'+CFG[k]+'</span></div>').join('')
-    +'<div style="margin-top:12px;font-size:9px;color:#2d4156;line-height:1.6">'
-      +'<div style="color:#f59e0b;margin-bottom:4px">▸ 參數說明</div>'
-      +'<div>止損 = 進場價 - N × ATR</div>'
-      +'<div>止盈 = 進場價 + M × ATR</div>'
-      +'<div>移動停損 = 最高價 - T × ATR</div>'
-      +'<div style="margin-top:4px">進場: 訊號觸發後下一根開盤價</div>'
-      +'<div>RSI: 快線須高於慢線才計分</div>'
-    +'</div>';
-  el.innerHTML=h;
-}
-</script>
-</body>
-</html+'<div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px;align-items:center">'
-      +'<span style="font-size:9px;color:#2d4156;margin-right:2px">主圖:</span>'
-        return '<button onclick="toggleInd(\''+x[0]+'\')" style="padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;font-size:10px;border:1px solid '+(IND[x[0]]?x[2]:'#0d1825')+';background:'+(IND[x[0]]?x[2]+'18':'transparent')+';color:'+(IND[x[0]]?x[2]:'#1e2a3a')+'">'+x[1]+'</button>';
-      }).join('')
-      +'</div>'
-      +'<div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px;align-items:center">'
-      +'<span style="font-size:9px;color:#2d4156;margin-right:2px">副圖:</span>'
-        return '<button onclick="toggleInd(\''+x[0]+'\')" style="padding:2px 6px;border-radius:3px;cursor:pointer;font-family:monospace;font-size:10px;border:1px solid '+(IND[x[0]]?x[2]:'#0d1825')+';background:'+(IND[x[0]]?x[2]+'18':'transparent')+';color:'+(IND[x[0]]?x[2]:'#1e2a3a')+'">'+x[1]+'</button>';
-      }).join('')
-      +'</div>'
-      +'<div id="candle-wrap" style="background:#000000;border-radius:7px;margin-bottom:5px;padding:5px 0 2px;overflow:hidden">'+svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,chartH,d.emas,d.entries||[],d.exits||[])+'</div>'
-      +(IND.vol?'<div class="cbox"><div class="clbl">成交量</div>'+svgVol(sub,chartW,58)+'</div>':'')
-      +(IND.macd?'<div class="cbox"><div class="clbl">MACD(12,26,9) <span style="color:#60a5fa">── MACD</span><span style="color:#f97316">── Signal</span></div>'+svgMACD(sub,chartW,90)+'</div>':'')
-      +(IND.rsi?'<div class="cbox"><div class="clbl">RSI(14) <span style="color:#a78bfa">── 快線</span> <span style="color:#f97316">-- 慢線(MA9)</span> <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>'+svgRSI(sub,chartW,90)+'</div>':'')
-      +(IND.risk?'<div class="cbox"><div class="clbl">風險指數 <span style="color:#22c55e">25安全</span> / <span style="color:#f97316">50警戒</span> / <span style="color:#ef4444">75危險</span></div>'+svgRisk(sub,chartW,80)+'</div>':'')
-  }else{
-    const{wins,tot,wr,avgW,avgL,byP}=bStats();
-    html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px">'
-      +[['總信號數',tot,'#60a5fa'],['歷史勝率',wr+'%',wr>55?'#22c55e':wr>45?'#f59e0b':'#ef4444'],
-         ['平均獲利','+'+avgW+'%','#22c55e'],['平均虧損',avgL+'%','#ef4444']].map(([l,v,c])=>
-        '<div style="background:var(--card);border-radius:7px;padding:10px;text-align:center">'
-          +'<div style="font-size:9px;color:var(--dim);margin-bottom:3px">'+l+'</div>'
-          +'<div style="font-size:22px;font-weight:bold;color:'+c+'">'+v+'</div>'
-        +'</div>').join('')+'</div>'
-      +'<div style="background:var(--card);border-radius:7px;padding:9px 12px;margin-bottom:10px">'
-        +'<div style="font-size:9px;color:var(--dim);margin-bottom:5px">整體勝率分佈</div>'
-        +'<div style="display:flex;height:12px;border-radius:3px;overflow:hidden;margin-bottom:5px">'
-          +'<div style="width:'+wr+'%;background:#22c55e"></div><div style="flex:1;background:#ef4444"></div>'
-        +'</div>'
-        +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--mid)">'
-          +'<span>&#x1f7e2; 勝 '+wins+'次 ('+wr+'%)</span><span>&#x1f534; 敗 '+(tot-wins)+'次 ('+(100-wr).toFixed(1)+'%)</span>'
-        +'</div>'
-      +'</div>'
-      +'<div style="font-size:10px;color:var(--mid);margin-bottom:6px">各形態歷史勝率</div>'
-      +Object.entries(byP).map(([pat,d])=>
-        '<div style="background:var(--card);border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">'
-          +'<div style="flex:1;font-size:11px">'+pat+'</div>'
-          +'<div style="display:flex;align-items:center;gap:8px">'
-            +'<span style="font-size:9px;color:var(--dim)">'+d.t+'次</span>'
-            +'<div style="width:70px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden">'
-              +'<div style="width:'+(d.w/d.t*100).toFixed(0)+'%;height:100%;background:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+'"></div>'
-            +'</div>'
-            +'<span style="font-size:12px;font-weight:bold;color:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+';min-width:32px">'+(d.w/d.t*100).toFixed(0)+'%</span>'
-          +'</div>'
-        +'</div>').join('')
-      +'<div style="font-size:10px;color:var(--mid);margin:10px 0 5px">交易記錄 (最新優先)</div>'
-      +'<div style="max-height:340px;overflow-y:auto">'
-      +S.btR.slice().reverse().map(r=>
-        '<div style="background:var(--card);border-radius:5px;padding:7px 9px;margin-bottom:4px;border-left:3px solid '+(r.result==='WIN'?'#22c55e':'#ef4444')+';display:flex;justify-content:space-between;align-items:center">'
-          +'<div><span style="font-size:9px;color:var(--dim)">'+r.date+' </span><span style="font-size:10px">'+r.pattern+'</span>'
-            +'<div style="font-size:9px;color:var(--dim);margin-top:1px">進:'+fp(r.entry)+' → 出:'+fp(r.exit)+(r.exitType?' ('+r.exitType+')':'')+'</div></div>'
-          +'<div style="text-align:right">'
-            +'<div style="font-size:11px;font-weight:bold;color:'+(r.result==='WIN'?'#22c55e':'#ef4444')+'">'+(r.pnl>0?'+':'')+r.pnl+'%</div>'
-            +'<div style="font-size:9px;color:var(--dim)">'+r.bars+'根K棒</div>'
-          +'</div>'
-        +'</div>').join('')
-      +'</div>';}
-  if(S.tab==='config'){
-    const cfgRows=[
-      ['atr_period','ATR 週期','number'],['atr_sl_mult','停損倍數 N','number'],
-      ['atr_tp_mult','停盈倍數 M','number'],['atr_trail_mult','移動停損倍數 T','number'],
-      ['rsi_period','RSI 週期','number'],['rsi_slow_period','RSI 慢線週期','number'],
-      ['rsi_oversold','RSI 超賣','number'],['rsi_overbought','RSI 超買','number'],
-      ['vol_lookback','成交量回看根數','number'],['vol_surge_mult','成交量放大倍數','number'],
-      ['ma200_proximity','MA200 接近閾值','number'],['min_signal_score','最低觸發分數','number'],
-      ['max_hold_bars','最大持倉K棒數','number'],
-    ];
-    html+='<div style="background:var(--card);border-radius:8px;padding:14px;margin-top:4px">'
-      +'<div style="font-size:13px;color:var(--bl);margin-bottom:10px;font-weight:bold">⚙ 全局參數設定 (Global Config)</div>'
-      +'<div style="font-size:10px;color:var(--dim);margin-bottom:12px;line-height:1.6">'
-        +'所有閾值已從程式碼中抽離為全局變數。修改後點「套用並重新計算」即時生效。'
-      +'</div>'
-      +cfgRows.map(([k,l,t])=>
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #162233">'
-          +'<label style="font-size:11px;color:var(--mid)">'+l+'</label>'
-          +'<input id="cfg_'+k+'" type="number" step="any" value="'+CFG[k]+'" '
-            +'style="width:70px;background:#0a1628;border:1px solid #162233;border-radius:3px;color:var(--text);padding:3px 6px;font-family:monospace;font-size:12px;text-align:right">'
-        +'</div>').join('')
-      +'<div style="display:flex;gap:8px;margin-top:14px">'
-        +'<button onclick="applyCfg()" style="flex:1;padding:8px;border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:4px;font-size:12px">套用並重新計算</button>'
-        +'<button onclick="resetCfg()" style="padding:8px 12px;border:1px solid #2d4156;background:transparent;color:#5a7394;border-radius:4px;font-size:12px">重置預設</button>'
-      +'</div>'
-      +'<div style="margin-top:14px;font-size:10px;color:#2d4156;line-height:1.7">'
-        +'<div style="color:#f59e0b;margin-bottom:4px">公式對照</div>'
-        +'<div>止損 SL = 進場價 - (N × ATR)</div>'
-        +'<div>止盈 TP = 進場價 + (M × ATR)</div>'
-        +'<div>移動停損 = 最高價 - (T × ATR)</div>'
-        +'<div style="margin-top:4px">進場 = 訊號觸發後下一根K棒開盤價</div>'
-        +'<div>RSI確認 = RSI快線 > RSI慢線(SMA'+CFG.rsi_slow_period+')</div>'
-      +'</div>'
-    +'</div>';
+  if(S.tab==='chart'){
+    h+=indBar();
+    h+='<div id="candle-wrap" style="background:#000;border-radius:7px;margin-bottom:5px;padding:5px 0 2px;overflow:hidden;cursor:grab">'+svgCandle(C,si)+'</div>';
+    if(IND.vol){h+='<div class="cbox"><div class="clbl">成交量</div>'+svgSub(sub,'vol',chartW,58)+'</div>'}
+    if(IND.macd){h+='<div class="cbox"><div class="clbl">MACD <span style="color:#60a5fa">── MACD</span> <span style="color:#f97316">── Signal</span></div>'+svgSub(sub,'macd',chartW,90)+'</div>'}
+    if(IND.rsi){h+='<div class="cbox"><div class="clbl">RSI <span style="color:#a78bfa">── 快線</span> <span style="color:#f97316">-- 慢線</span></div>'+svgSub(sub,'rsi',chartW,90)+'</div>'}
+    if(IND.risk){h+='<div class="cbox"><div class="clbl">風險 <span style="color:#22c55e">25安全</span> <span style="color:#f97316">50警戒</span> <span style="color:#ef4444">75危險</span></div>'+svgSub(sub,'risk',chartW,80)+'</div>'}
+  }else if(S.tab==='backtest'){
+    var st=bStats(),wins=st.wins,tot=st.tot,wr=st.wr;
+    h+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px">';
+    [['總信號',tot,'#60a5fa'],['勝率',wr+'%',wr>55?'#22c55e':wr>45?'#f59e0b':'#ef4444'],['平均獲利','+'+st.avgW+'%','#22c55e'],['平均虧損',st.avgL+'%','#ef4444']].forEach(function(c){h+='<div style="background:var(--card);border-radius:7px;padding:10px;text-align:center"><div style="font-size:9px;color:var(--dim);margin-bottom:3px">'+c[0]+'</div><div style="font-size:22px;font-weight:bold;color:'+c[2]+'">'+c[1]+'</div></div>'});
+    h+='</div>';
+    h+='<div style="background:var(--card);border-radius:7px;padding:9px 12px;margin-bottom:10px"><div style="font-size:9px;color:var(--dim);margin-bottom:5px">勝率分佈</div><div style="display:flex;height:12px;border-radius:3px;overflow:hidden;margin-bottom:5px"><div style="width:'+wr+'%;background:#22c55e"></div><div style="flex:1;background:#ef4444"></div></div><div style="display:flex;justify-content:space-between;font-size:9px;color:var(--mid)"><span>🟢 '+wins+'勝 ('+wr+'%)</span><span>🔴 '+(tot-wins)+'敗</span></div></div>';
+    h+='<div style="font-size:10px;color:var(--mid);margin-bottom:6px">各形態勝率</div>';
+    Object.keys(st.byP).forEach(function(pat){var d=st.byP[pat],pwr=(d.w/d.t*100).toFixed(0);h+='<div style="background:var(--card);border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:11px">'+pat+'</div><span style="font-size:9px;color:var(--dim)">'+d.t+'次</span><div style="width:70px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden"><div style="width:'+pwr+'%;height:100%;background:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+'"></div></div><span style="font-size:12px;font-weight:bold;color:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+'">'+pwr+'%</span></div>'});
+    h+='<div style="font-size:10px;color:var(--mid);margin:10px 0 5px">交易記錄</div><div style="max-height:340px;overflow-y:auto">';
+    S.btR.slice().reverse().forEach(function(r){h+='<div style="background:var(--card);border-radius:5px;padding:7px 9px;margin-bottom:4px;border-left:3px solid '+(r.result==='WIN'?'#22c55e':'#ef4444')+';display:flex;justify-content:space-between;align-items:center"><div><span style="font-size:9px;color:var(--dim)">'+r.date+' </span><span style="font-size:10px">'+r.pattern+'</span><div style="font-size:9px;color:var(--dim)">進:'+fp(r.entry)+' → 出:'+fp(r.exit)+(r.exitType?' ('+r.exitType+')':'')+'</div></div><div style="text-align:right"><div style="font-size:11px;font-weight:bold;color:'+(r.result==='WIN'?'#22c55e':'#ef4444')+'">'+(r.pnl>0?'+':'')+r.pnl+'%</div><div style="font-size:9px;color:var(--dim)">'+r.bars+'根</div></div></div>'});
+    h+='</div>';
+  }else if(S.tab==='config'){
+    h+='<div style="background:var(--card);border-radius:8px;padding:14px"><div style="font-size:13px;color:var(--bl);margin-bottom:10px;font-weight:bold">⚙ 全局參數 (Global Config)</div><div style="font-size:10px;color:var(--dim);margin-bottom:12px">修改後點「套用」即時重算。</div>';
+    [['atr_period','ATR週期'],['atr_sl_mult','停損倍數N'],['atr_tp_mult','停盈倍數M'],['atr_trail_mult','移動停損倍數T'],['rsi_period','RSI週期'],['rsi_slow_period','RSI慢線週期'],['rsi_oversold','RSI超賣'],['rsi_overbought','RSI超買'],['vol_lookback','量能回看'],['vol_surge_mult','量能倍數'],['ma200_proximity','MA200閾值'],['min_signal_score','最低分數'],['max_hold_bars','最大持倉']].forEach(function(x){h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #162233"><label style="font-size:11px;color:var(--mid)">'+x[1]+'</label><input id="cfg_'+x[0]+'" type="number" step="any" value="'+CFG[x[0]]+'" style="width:70px;background:#0a1628;border:1px solid #162233;border-radius:3px;color:var(--text);padding:3px 6px;font-family:monospace;font-size:12px;text-align:right"></div>'});
+    h+='<div style="display:flex;gap:8px;margin-top:14px"><button onclick="applyCfg()" style="flex:1;padding:8px;border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:4px;font-size:12px">套用並重算</button><button onclick="resetCfg()" style="padding:8px 12px;border:1px solid #2d4156;background:transparent;color:#5a7394;border-radius:4px;font-size:12px">重置</button></div>';
+    h+='<div style="margin-top:12px;font-size:10px;color:#2d4156;line-height:1.7"><div style="color:#f59e0b;margin-bottom:4px">公式</div><div>SL = 進場 - N×ATR · TP = 進場 + M×ATR</div><div>移動停損 = 最高價 - T×ATR</div><div>進場 = 下根開盤價 · RSI需快>慢</div></div></div>';
   }
-  document.getElementById('chart-content').innerHTML=html;}
-
+  document.getElementById('cc').innerHTML=h;
+}
+/* ═══ RENDER: PANEL ═══ */
 function renderPanel(){
-  if(!S.data.length){
-    document.getElementById('panel-content').innerHTML='<div style="color:#2d4156;font-size:11px;text-align:center;padding:30px 10px">等待資料載入…</div>';
-    return;}
-  const px=S.cl[S.cl.length-1]||0,r=S.rsi[S.rsi.length-1];
-  const ml=S.macd.line[S.macd.line.length-1],ms=S.macd.sig[S.macd.sig.length-1];
-  const m2=S.ma200[S.ma200.length-1],abv=m2!=null&&px>m2;
-  const bbu=S.bb.up[S.bb.up.length-1],bbl=S.bb.lo[S.bb.lo.length-1];
-  const m5=S.ma50[S.ma50.length-1];
-  const rows=[
-    {l:'RSI(14)',v:r!=null?r.toFixed(1):null,s:r==null?'N/A':r<30?'超賣🟢':r>70?'超買🔴':'中性',c:r<30?'#22c55e':r>70?'#ef4444':'#5a7394'},
-    {l:'MACD訊號',v:null,s:ml==null?'計算中':ml>ms?'黃金交叉↑':'死亡交叉↓',c:ml>ms?'#22c55e':'#ef4444'},
-    {l:'EMA100',v:S.emas[100]?fp(S.emas[100][S.emas[100].length-1]):'—',
-      s:S.emas[100]&&S.emas[100][S.emas[100].length-1]!=null?(px>S.emas[100][S.emas[100].length-1]?'站上':'跌破'):'N/A',
-      c:S.emas[100]&&S.emas[100][S.emas[100].length-1]!=null&&px>S.emas[100][S.emas[100].length-1]?'#22c55e':'#ef4444'},
-    {l:'EMA200',v:m2?fp(m2):'資料不足',s:m2?abv?'站上(多)':'跌破(空)':'—',c:abv?'#22c55e':m2?'#ef4444':'#2d4156'},
-    {l:'EMA300',v:S.emas[300]?fp(S.emas[300][S.emas[300].length-1]):'—',
-      s:S.emas[300]&&S.emas[300][S.emas[300].length-1]!=null?(px>S.emas[300][S.emas[300].length-1]?'站上':'跌破'):'N/A',
-      c:S.emas[300]&&S.emas[300][S.emas[300].length-1]!=null&&px>S.emas[300][S.emas[300].length-1]?'#22c55e':'#ef4444'},
-    {l:'EMA500',v:S.emas[500]?fp(S.emas[500][S.emas[500].length-1]):'—',
-      s:S.emas[500]&&S.emas[500][S.emas[500].length-1]!=null?(px>S.emas[500][S.emas[500].length-1]?'站上':'跌破'):'N/A',
-      c:S.emas[500]&&S.emas[500][S.emas[500].length-1]!=null&&px>S.emas[500][S.emas[500].length-1]?'#22c55e':'#ef4444'},
-    {l:'BB上軌',v:bbu?fp(bbu):'—',s:bbu?px>bbu?'已突破':'正常':'—',c:px>bbu?'#f59e0b':'#5a7394'},
-    {l:'BB下軌',v:bbl?fp(bbl):'—',s:bbl?px<bbl?'已跌破':'正常':'—',c:px<bbl?'#ef4444':'#5a7394'},
-    {l:'POC',v:S.poc?fp(S.poc):'—',s:S.poc?px>S.poc?'高於POC':'低於POC':'—',c:S.poc&&px>S.poc?'#22c55e':'#ef4444'},
-    {l:'風險指數',v:S.riskA[S.riskA.length-1]!=null?S.riskA[S.riskA.length-1]:'—',
-      s:S.riskA[S.riskA.length-1]!=null?(S.riskA[S.riskA.length-1]>=75?'\u26A0 危險':S.riskA[S.riskA.length-1]>=50?'\u26A1 警戒':'\u2713 安全'):'N/A',
-      c:S.riskA[S.riskA.length-1]>=75?'#ef4444':S.riskA[S.riskA.length-1]>=50?'#f97316':'#22c55e'},
-    {l:'ATR('+CFG.atr_period+')',v:S.atrA[S.atrA.length-1]?fp(S.atrA[S.atrA.length-1]):'—',s:S.atrA[S.atrA.length-1]?((S.atrA[S.atrA.length-1]/px*100).toFixed(1)+'%波幅'):'N/A',c:'#5a7394'},
-    {l:'RSI慢線',v:S.rsiSlow[S.rsiSlow.length-1]!=null?S.rsiSlow[S.rsiSlow.length-1].toFixed(1):'—',s:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null)?(r>S.rsiSlow[S.rsiSlow.length-1]?'快>慢 多':'快<慢 空'):'N/A',c:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null&&r>S.rsiSlow[S.rsiSlow.length-1])?'#22c55e':'#ef4444'},
+  if(!S.data.length){document.getElementById('pc').innerHTML='<div style="color:#2d4156;text-align:center;padding:30px">等待資料…</div>';return}
+  var px=S.cl[S.cl.length-1]||0,r=S.rsi[S.rsi.length-1],m2=S.ma200[S.ma200.length-1],abv=m2!=null&&px>m2,risk=S.riskA[S.riskA.length-1];
+  var ml=S.macd.line[S.macd.line.length-1],ms=S.macd.sig[S.macd.sig.length-1],atr=S.atrA[S.atrA.length-1];
+  var rows=[
+    ['風險指數',risk!=null?risk:'—',risk!=null?(risk>=75?'⚠ 危險':risk>=50?'⚡ 警戒':'✓ 安全'):'N/A',risk>=75?'#ef4444':risk>=50?'#f97316':'#22c55e'],
+    ['RSI(14)',r!=null?r.toFixed(1):'—',r!=null?(r<30?'超賣🟢':r>70?'超買🔴':'中性'):'N/A',r<30?'#22c55e':r>70?'#ef4444':'#5a7394'],
+    ['MACD',null,ml==null?'計算中':ml>ms?'黃金交叉↑':'死亡交叉↓',ml>ms?'#22c55e':'#ef4444'],
+    ['EMA200',m2?fp(m2):'N/A',m2?abv?'站上(多)':'跌破(空)':'—',abv?'#22c55e':m2?'#ef4444':'#2d4156'],
+    ['ATR('+CFG.atr_period+')',atr?fp(atr):'—',atr?((atr/px*100).toFixed(1)+'%'):'N/A','#5a7394'],
+    ['POC',S.poc?fp(S.poc):'—',S.poc?px>S.poc?'高於':'低於':'—',S.poc&&px>S.poc?'#22c55e':'#ef4444']
   ];
-  const last=S.sigs[S.sigs.length-1];const{byP}=bStats();
-  let html='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 當前指標狀態</div>'
-    +rows.map(x=>'<div class="prow">'
-      +'<span style="font-size:10px;color:var(--dim)">'+x.l+'</span>'
-      +'<div style="text-align:right">'+(x.v?'<span style="font-size:9px;color:var(--mid);margin-right:4px">'+x.v+'</span>':'')+'<span style="font-size:10px;color:'+x.c+'">'+x.s+'</span></div>'
-    +'</div>').join('');
-  if(last){const bp=byP[last.pattern];
-    html+='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin:13px 0 7px">▸ 最新形態信號</div>'
-      +'<div style="background:#091525;border-radius:8px;border:1px solid #1a3a5f;padding:10px">'
-        +'<div style="font-size:13px;font-weight:bold;margin-bottom:3px">'+last.pattern+'</div>'
-        +'<div style="font-size:9px;color:var(--dim);margin-bottom:7px">'+last.date+' · 強度 '+last.str+'/'+last.maxStr+'</div>'
-        +'<div style="background:var(--bd);border-radius:2px;height:4px;margin-bottom:9px">'
-          +'<div style="width:'+(last.str/last.maxStr*100).toFixed(0)+'%;height:100%;border-radius:2px;background:'+(last.str/last.maxStr>0.7?'#22c55e':last.str/last.maxStr>0.5?'#f59e0b':'#ef4444')+'"></div>'
-        +'</div>'
-        +'<div style="margin-bottom:10px">'+last.conds.map(c=>'<div style="font-size:10px;color:#22c55e;padding:1.5px 0">✓ '+c+'</div>').join('')+'</div>'
-        +'<div style="background:#0a1424;border-radius:6px;padding:9px">'
-          +[['進場價格',fp(last.entry),'#60a5fa',''],['止盈目標 TP',fp(last.tp),'#22c55e','+'+last.tpPct+'%'],['止損位置 SL',fp(last.sl),'#ef4444','-'+last.slPct+'%']].map(([l,v,c,tag])=>
-            '<div style="display:flex;justify-content:space-between;padding:4px 0">'
-              +'<span style="font-size:9px;color:var(--dim)">'+l+'</span>'
-              +'<span style="font-size:12px;font-weight:bold;color:'+c+'">'+v+(tag?' <span style="font-size:9px;opacity:.7">'+tag+'</span>':'')+'</span>'
-            +'</div>').join('')
-          +'<div style="border-top:1px solid var(--bd);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between">'
-            +'<span style="font-size:9px;color:var(--dim)">風報比 R:R</span>'
-            +'<span style="font-size:12px;color:#f59e0b;font-weight:bold">1:'+(last.tpPct/last.slPct).toFixed(1)+'</span>'
-          +'</div>'
-        +'</div>'
-        +(bp?'<div style="margin-top:8px;background:#0a1424;border-radius:6px;padding:8px;text-align:center">'
-            +'<div style="font-size:9px;color:var(--dim);margin-bottom:2px">此形態歷史勝率</div>'
-            +'<div style="font-size:24px;font-weight:bold;color:'+(bp.w/bp.t>0.5?'#22c55e':'#ef4444')+'">'+(bp.w/bp.t*100).toFixed(0)+'%</div>'
-            +'<div style="font-size:9px;color:#2d4156">'+bp.w+'/'+bp.t+' 次達標</div>'
-          +'</div>':'')
-      +'</div>';}
-  html+='<div style="margin:12px 0 6px;font-size:9px;color:#2d4156">▸ 歷史信號 ('+S.sigs.length+')</div>'
-    +S.sigs.slice().reverse().slice(0,8).map(s=>{
-      const bt=S.btR.find(r=>r.index===s.index);
-      const col=bt?.result==='WIN'?'#22c55e':bt?.result==='LOSS'?'#ef4444':'#2d4156';
-      return'<div style="background:var(--bg);border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid '+col+'">'
-        +'<div style="display:flex;justify-content:space-between">'
-          +'<span style="font-size:9px;color:var(--dim)">'+s.date+' '+s.pattern+'</span>'
-          +(bt?'<span style="font-size:10px;font-weight:bold;color:'+col+'">'+(bt.pnl>0?'+':'')+bt.pnl+'%</span>':'')
-        +'</div>'
-        +'<div style="font-size:9px;color:#2d4156;margin-top:1px">進:'+fp(s.entry)+' 盈:'+fp(s.tp)+' 損:'+fp(s.sl)+'</div>'
-      +'</div>';}).join('')
-    +(!S.sigs.length&&S.data.length?'<div style="font-size:10px;color:#2d4156;text-align:center;padding:20px 0">目前無滿足條件的形態信號</div>':'');
-  document.getElementById('panel-content').innerHTML=html;}
-
-/* ══ FETCH & ACTIONS ════════════════════════════════════ */
-async function fetchData(){
-  S.loading=true;S.error=null;renderAll();
-  try{
-    const ex=EX[S.ex],sym=ex.sym(S.coin),n=S.ex==='binance'?1000:({'3M':100,'1M':300,'1W':300,'1D':300,'4H':300,'1H':300,'15M':300}[S.tf]);
-    const data=await ex.get(sym,S.tf,n);
-    if(!data||data.length<30)throw new Error('資料不足，請稍後重試');
-    S.data=data;compute();S.updated=new Date().toLocaleTimeString();
-  }catch(e){
-    const msg=e.message||'載入失敗';
-    S.error=(msg.includes('400')||msg.includes('HTTP 4'))?
-      '找不到 '+EX[S.ex].sym(S.coin)+' ── 請確認是加密幣代號（如 BTC、PEPE），股票不適用':msg;
-  }finally{S.loading=false;renderAll();}
-}
-function setEx(k){S.ex=k;fetchData();}
-function setTF(t){S.tf=t;fetchData();}
-function setTab(t){S.tab=t;renderCharts();}
-function setRange(r){S.range=r;renderCharts();}
-function toggleInd(k){IND[k]=!IND[k];renderCharts();}
-
-function applyCfg(){
-  const keys=['atr_period','atr_sl_mult','atr_tp_mult','atr_trail_mult',
-    'rsi_period','rsi_slow_period','rsi_oversold','rsi_overbought',
-    'vol_lookback','vol_surge_mult','ma200_proximity','min_signal_score','max_hold_bars'];
-  keys.forEach(k=>{
-    const el=document.getElementById('cfg_'+k);
-    if(el){const v=parseFloat(el.value);if(!isNaN(v))CFG[k]=v;}
-  });
-  compute();renderAll();
-}
-function resetCfg(){
-  Object.assign(CFG,{atr_period:14,atr_sl_mult:1.5,atr_tp_mult:3.0,atr_trail_mult:2.0,
-    rsi_period:14,rsi_slow_period:9,rsi_oversold:30,rsi_overbought:70,rsi_engulf_max:55,
-    rsi_macd_lo:45,rsi_macd_hi:72,rsi_bb_lo:55,rsi_bb_hi:78,
-    vol_lookback:10,vol_surge_mult:1.4,ema_periods:[100,200,300,500],ma200_proximity:0.015,
-    bb_period:20,bb_mult:2,macd_fast:12,macd_slow:26,macd_signal:9,
-    poc_lookback:60,poc_bins:50,hammer_shadow_ratio:2.5,hammer_wick_ratio:0.4,
-    engulf_tolerance:1.003,tws_gap_pct:0.006,min_signal_score:4,
-    entry_mode:'next_open',exit_mode:'trailing',max_hold_bars:120,fixed_hold_bars:30});
-  compute();renderAll();
-}
-window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(()=>renderAll(),200);});
-
-// ── Chart zoom & pan ──
-let isDragging=false,dragStartX=0,dragStartOffset=0;
-document.addEventListener('wheel',function(e){
-  const wrap=document.getElementById('candle-wrap');
-  if(!wrap||!wrap.contains(e.target))return;
-  e.preventDefault();
-  const delta=e.deltaY>0?-0.15:0.15;
-  zoomLevel=Math.max(0.3,Math.min(5.0,zoomLevel+delta));
-  // Adjust chartH based on zoom
-  chartH=Math.max(200,Math.min(800,Math.round(300*zoomLevel)));
-  renderCharts();
-},{passive:false});
-
-document.addEventListener('mousedown',function(e){
-  const wrap=document.getElementById('candle-wrap');
-  if(!wrap||!wrap.contains(e.target))return;
-  isDragging=true;dragStartX=e.clientX;dragStartOffset=panOffset;
-  wrap.style.cursor='grabbing';
-});
-document.addEventListener('mousemove',function(e){
-  if(!isDragging)return;
-  const dx=e.clientX-dragStartX;
-  panOffset=dragStartOffset+Math.round(dx/3);
-  renderCharts();
-});
-document.addEventListener('mouseup',function(){
-  if(!isDragging)return;
-  isDragging=false;
-  const wrap=document.getElementById('candle-wrap');
-  if(wrap)wrap.style.cursor='grab';
-});
-
-// Init
-renderHdr();renderCharts();renderPanel();
-fetchData();
-fetchTop100();
-startAutoScan();
-
-// Config display helper
-function showConfig(){
-  const el=document.getElementById('panel-content');
-  const rows=[
-    ['ATR 週期','atr_period'],['ATR 停損倍數 (N)','atr_sl_mult'],
-    ['ATR 停盈倍數 (M)','atr_tp_mult'],['ATR 移動停損倍數','atr_trail_mult'],
-    ['RSI 週期','rsi_period'],['RSI 慢線週期','rsi_slow_period'],
-    ['RSI 超賣','rsi_oversold'],['RSI 超買','rsi_overbought'],
-    ['成交量回看','vol_lookback'],['成交量放大倍數','vol_surge_mult'],
-    ['MA200 接近閾值','ma200_proximity'],['進場模式','entry_mode'],
-    ['出場模式','exit_mode'],['最大持倉K棒','max_hold_bars'],
-  ];
-  const h='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 系統參數 (CFG)</div>'
-    +rows.map(([l,k])=>'<div class="prow"><span style="font-size:10px;color:var(--dim)">'+l+'</span><span style="font-size:11px;color:var(--bl)">'+CFG[k]+'</span></div>').join('')
-    +'<div style="margin-top:12px;font-size:9px;color:#2d4156;line-height:1.6">'
-      +'<div style="color:#f59e0b;margin-bottom:4px">▸ 參數說明</div>'
-      +'<div>止損 = 進場價 - N × ATR</div>'
-      +'<div>止盈 = 進場價 + M × ATR</div>'
-      +'<div>移動停損 = 最高價 - T × ATR</div>'
-      +'<div style="margin-top:4px">進場: 訊號觸發後下一根開盤價</div>'
-      +'<div>RSI: 快線須高於慢線才計分</div>'
-    +'</div>';
-  el.innerHTML=h;
-}
-</script>
-</body>
-
-      +'<div id="candle-wrap" style="background:#000000;border-radius:7px;margin-bottom:5px;padding:5px 0 2px;overflow:hidden">'+svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,chartH,d.emas,d.entries||[],d.exits||[])+'</div>'
-      +(IND.vol?'<div class="cbox"><div class="clbl">成交量</div>'+svgVol(sub,chartW,58)+'</div>':'')
-      +(IND.macd?'<div class="cbox"><div class="clbl">MACD(12,26,9) <span style="color:#60a5fa">── MACD</span><span style="color:#f97316">── Signal</span></div>'+svgMACD(sub,chartW,90)+'</div>':'')
-      +(IND.rsi?'<div class="cbox"><div class="clbl">RSI(14) <span style="color:#a78bfa">── 快線</span> <span style="color:#f97316">-- 慢線(MA9)</span> <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>'+svgRSI(sub,chartW,90)+'</div>':'')
-      +(IND.risk?'<div class="cbox"><div class="clbl">風險指數 <span style="color:#22c55e">25安全</span> / <span style="color:#f97316">50警戒</span> / <span style="color:#ef4444">75危險</span></div>'+svgRisk(sub,chartW,80)+'</div>':'')
-  }else{
-    const{wins,tot,wr,avgW,avgL,byP}=bStats();
-    html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px">'
-      +[['總信號數',tot,'#60a5fa'],['歷史勝率',wr+'%',wr>55?'#22c55e':wr>45?'#f59e0b':'#ef4444'],
-         ['平均獲利','+'+avgW+'%','#22c55e'],['平均虧損',avgL+'%','#ef4444']].map(([l,v,c])=>
-        '<div style="background:var(--card);border-radius:7px;padding:10px;text-align:center">'
-          +'<div style="font-size:9px;color:var(--dim);margin-bottom:3px">'+l+'</div>'
-          +'<div style="font-size:22px;font-weight:bold;color:'+c+'">'+v+'</div>'
-        +'</div>').join('')+'</div>'
-      +'<div style="background:var(--card);border-radius:7px;padding:9px 12px;margin-bottom:10px">'
-        +'<div style="font-size:9px;color:var(--dim);margin-bottom:5px">整體勝率分佈</div>'
-        +'<div style="display:flex;height:12px;border-radius:3px;overflow:hidden;margin-bottom:5px">'
-          +'<div style="width:'+wr+'%;background:#22c55e"></div><div style="flex:1;background:#ef4444"></div>'
-        +'</div>'
-        +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--mid)">'
-          +'<span>&#x1f7e2; 勝 '+wins+'次 ('+wr+'%)</span><span>&#x1f534; 敗 '+(tot-wins)+'次 ('+(100-wr).toFixed(1)+'%)</span>'
-        +'</div>'
-      +'</div>'
-      +'<div style="font-size:10px;color:var(--mid);margin-bottom:6px">各形態歷史勝率</div>'
-      +Object.entries(byP).map(([pat,d])=>
-        '<div style="background:var(--card);border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">'
-          +'<div style="flex:1;font-size:11px">'+pat+'</div>'
-          +'<div style="display:flex;align-items:center;gap:8px">'
-            +'<span style="font-size:9px;color:var(--dim)">'+d.t+'次</span>'
-            +'<div style="width:70px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden">'
-              +'<div style="width:'+(d.w/d.t*100).toFixed(0)+'%;height:100%;background:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+'"></div>'
-            +'</div>'
-            +'<span style="font-size:12px;font-weight:bold;color:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+';min-width:32px">'+(d.w/d.t*100).toFixed(0)+'%</span>'
-          +'</div>'
-        +'</div>').join('')
-      +'<div style="font-size:10px;color:var(--mid);margin:10px 0 5px">交易記錄 (最新優先)</div>'
-      +'<div style="max-height:340px;overflow-y:auto">'
-      +S.btR.slice().reverse().map(r=>
-        '<div style="background:var(--card);border-radius:5px;padding:7px 9px;margin-bottom:4px;border-left:3px solid '+(r.result==='WIN'?'#22c55e':'#ef4444')+';display:flex;justify-content:space-between;align-items:center">'
-          +'<div><span style="font-size:9px;color:var(--dim)">'+r.date+' </span><span style="font-size:10px">'+r.pattern+'</span>'
-            +'<div style="font-size:9px;color:var(--dim);margin-top:1px">進:'+fp(r.entry)+' → 出:'+fp(r.exit)+(r.exitType?' ('+r.exitType+')':'')+'</div></div>'
-          +'<div style="text-align:right">'
-            +'<div style="font-size:11px;font-weight:bold;color:'+(r.result==='WIN'?'#22c55e':'#ef4444')+'">'+(r.pnl>0?'+':'')+r.pnl+'%</div>'
-            +'<div style="font-size:9px;color:var(--dim)">'+r.bars+'根K棒</div>'
-          +'</div>'
-        +'</div>').join('')
-      +'</div>';}
-  if(S.tab==='config'){
-    const cfgRows=[
-      ['atr_period','ATR 週期','number'],['atr_sl_mult','停損倍數 N','number'],
-      ['atr_tp_mult','停盈倍數 M','number'],['atr_trail_mult','移動停損倍數 T','number'],
-      ['rsi_period','RSI 週期','number'],['rsi_slow_period','RSI 慢線週期','number'],
-      ['rsi_oversold','RSI 超賣','number'],['rsi_overbought','RSI 超買','number'],
-      ['vol_lookback','成交量回看根數','number'],['vol_surge_mult','成交量放大倍數','number'],
-      ['ma200_proximity','MA200 接近閾值','number'],['min_signal_score','最低觸發分數','number'],
-      ['max_hold_bars','最大持倉K棒數','number'],
-    ];
-    html+='<div style="background:var(--card);border-radius:8px;padding:14px;margin-top:4px">'
-      +'<div style="font-size:13px;color:var(--bl);margin-bottom:10px;font-weight:bold">⚙ 全局參數設定 (Global Config)</div>'
-      +'<div style="font-size:10px;color:var(--dim);margin-bottom:12px;line-height:1.6">'
-        +'所有閾值已從程式碼中抽離為全局變數。修改後點「套用並重新計算」即時生效。'
-      +'</div>'
-      +cfgRows.map(([k,l,t])=>
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #162233">'
-          +'<label style="font-size:11px;color:var(--mid)">'+l+'</label>'
-          +'<input id="cfg_'+k+'" type="number" step="any" value="'+CFG[k]+'" '
-            +'style="width:70px;background:#0a1628;border:1px solid #162233;border-radius:3px;color:var(--text);padding:3px 6px;font-family:monospace;font-size:12px;text-align:right">'
-        +'</div>').join('')
-      +'<div style="display:flex;gap:8px;margin-top:14px">'
-        +'<button onclick="applyCfg()" style="flex:1;padding:8px;border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:4px;font-size:12px">套用並重新計算</button>'
-        +'<button onclick="resetCfg()" style="padding:8px 12px;border:1px solid #2d4156;background:transparent;color:#5a7394;border-radius:4px;font-size:12px">重置預設</button>'
-      +'</div>'
-      +'<div style="margin-top:14px;font-size:10px;color:#2d4156;line-height:1.7">'
-        +'<div style="color:#f59e0b;margin-bottom:4px">公式對照</div>'
-        +'<div>止損 SL = 進場價 - (N × ATR)</div>'
-        +'<div>止盈 TP = 進場價 + (M × ATR)</div>'
-        +'<div>移動停損 = 最高價 - (T × ATR)</div>'
-        +'<div style="margin-top:4px">進場 = 訊號觸發後下一根K棒開盤價</div>'
-        +'<div>RSI確認 = RSI快線 > RSI慢線(SMA'+CFG.rsi_slow_period+')</div>'
-      +'</div>'
-    +'</div>';
+  var h='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 指標狀態</div>';
+  rows.forEach(function(x){h+='<div class="prow"><span style="font-size:10px;color:var(--dim)">'+x[0]+'</span><div style="text-align:right">'+(x[1]?'<span style="font-size:9px;color:var(--mid);margin-right:4px">'+x[1]+'</span>':'')+'<span style="font-size:10px;color:'+x[3]+'">'+x[2]+'</span></div></div>'});
+  // Latest signal
+  var last=S.sigs[S.sigs.length-1],bp=bStats().byP;
+  if(last){
+    h+='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin:13px 0 7px">▸ 最新信號</div>';
+    h+='<div style="background:#091525;border-radius:8px;border:1px solid #1a3a5f;padding:10px">';
+    h+='<div style="font-size:13px;font-weight:bold;margin-bottom:3px">'+last.pattern+'</div>';
+    h+='<div style="font-size:9px;color:var(--dim);margin-bottom:7px">'+last.date+' · 強度 '+last.str+'/'+last.maxStr+'</div>';
+    h+='<div style="background:var(--bd);border-radius:2px;height:4px;margin-bottom:9px"><div style="width:'+(last.str/last.maxStr*100).toFixed(0)+'%;height:100%;border-radius:2px;background:'+(last.str/last.maxStr>0.7?'#22c55e':last.str/last.maxStr>0.5?'#f59e0b':'#ef4444')+'"></div></div>';
+    last.conds.forEach(function(c){h+='<div style="font-size:10px;color:#22c55e;padding:1.5px 0">✓ '+c+'</div>'});
+    h+='<div style="background:#0a1424;border-radius:6px;padding:9px;margin-top:10px">';
+    [['進場 ('+last.entryMode+')',fp(last.entry),'#60a5fa',''],['止盈 TP (ATR×'+CFG.atr_tp_mult+')',fp(last.tp),'#22c55e','+'+last.tpPct+'%'],['止損 SL (ATR×'+CFG.atr_sl_mult+')',fp(last.sl),'#ef4444','-'+last.slPct+'%'],['ATR值',fp(last.atr),'#5a7394',(last.atr/last.entry*100).toFixed(1)+'%']].forEach(function(x){h+='<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-size:9px;color:var(--dim)">'+x[0]+'</span><span style="font-size:12px;font-weight:bold;color:'+x[2]+'">'+x[1]+(x[3]?' <span style="font-size:9px;opacity:.7">'+x[3]+'</span>':'')+'</span></div>'});
+    h+='<div style="border-top:1px solid var(--bd);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between"><span style="font-size:9px;color:var(--dim)">風報比</span><span style="font-size:12px;color:#f59e0b;font-weight:bold">1:'+(last.tpPct/last.slPct).toFixed(1)+'</span></div></div>';
+    var lbp=bp[last.pattern];if(lbp){h+='<div style="margin-top:8px;background:#0a1424;border-radius:6px;padding:8px;text-align:center"><div style="font-size:9px;color:var(--dim)">此形態勝率</div><div style="font-size:24px;font-weight:bold;color:'+(lbp.w/lbp.t>0.5?'#22c55e':'#ef4444')+'">'+(lbp.w/lbp.t*100).toFixed(0)+'%</div><div style="font-size:9px;color:#2d4156">'+lbp.w+'/'+lbp.t+'</div></div>'}
+    h+='</div>';
   }
-  document.getElementById('chart-content').innerHTML=html;}
-
-function renderPanel(){
-  if(!S.data.length){
-    document.getElementById('panel-content').innerHTML='<div style="color:#2d4156;font-size:11px;text-align:center;padding:30px 10px">等待資料載入…</div>';
-    return;}
-  const px=S.cl[S.cl.length-1]||0,r=S.rsi[S.rsi.length-1];
-  const ml=S.macd.line[S.macd.line.length-1],ms=S.macd.sig[S.macd.sig.length-1];
-  const m2=S.ma200[S.ma200.length-1],abv=m2!=null&&px>m2;
-  const bbu=S.bb.up[S.bb.up.length-1],bbl=S.bb.lo[S.bb.lo.length-1];
-  const m5=S.ma50[S.ma50.length-1];
-  const rows=[
-    {l:'RSI(14)',v:r!=null?r.toFixed(1):null,s:r==null?'N/A':r<30?'超賣🟢':r>70?'超買🔴':'中性',c:r<30?'#22c55e':r>70?'#ef4444':'#5a7394'},
-    {l:'MACD訊號',v:null,s:ml==null?'計算中':ml>ms?'黃金交叉↑':'死亡交叉↓',c:ml>ms?'#22c55e':'#ef4444'},
-    {l:'EMA100',v:S.emas[100]?fp(S.emas[100][S.emas[100].length-1]):'—',
-      s:S.emas[100]&&S.emas[100][S.emas[100].length-1]!=null?(px>S.emas[100][S.emas[100].length-1]?'站上':'跌破'):'N/A',
-      c:S.emas[100]&&S.emas[100][S.emas[100].length-1]!=null&&px>S.emas[100][S.emas[100].length-1]?'#22c55e':'#ef4444'},
-    {l:'EMA200',v:m2?fp(m2):'資料不足',s:m2?abv?'站上(多)':'跌破(空)':'—',c:abv?'#22c55e':m2?'#ef4444':'#2d4156'},
-    {l:'EMA300',v:S.emas[300]?fp(S.emas[300][S.emas[300].length-1]):'—',
-      s:S.emas[300]&&S.emas[300][S.emas[300].length-1]!=null?(px>S.emas[300][S.emas[300].length-1]?'站上':'跌破'):'N/A',
-      c:S.emas[300]&&S.emas[300][S.emas[300].length-1]!=null&&px>S.emas[300][S.emas[300].length-1]?'#22c55e':'#ef4444'},
-    {l:'EMA500',v:S.emas[500]?fp(S.emas[500][S.emas[500].length-1]):'—',
-      s:S.emas[500]&&S.emas[500][S.emas[500].length-1]!=null?(px>S.emas[500][S.emas[500].length-1]?'站上':'跌破'):'N/A',
-      c:S.emas[500]&&S.emas[500][S.emas[500].length-1]!=null&&px>S.emas[500][S.emas[500].length-1]?'#22c55e':'#ef4444'},
-    {l:'BB上軌',v:bbu?fp(bbu):'—',s:bbu?px>bbu?'已突破':'正常':'—',c:px>bbu?'#f59e0b':'#5a7394'},
-    {l:'BB下軌',v:bbl?fp(bbl):'—',s:bbl?px<bbl?'已跌破':'正常':'—',c:px<bbl?'#ef4444':'#5a7394'},
-    {l:'POC',v:S.poc?fp(S.poc):'—',s:S.poc?px>S.poc?'高於POC':'低於POC':'—',c:S.poc&&px>S.poc?'#22c55e':'#ef4444'},
-    {l:'風險指數',v:S.riskA[S.riskA.length-1]!=null?S.riskA[S.riskA.length-1]:'—',
-      s:S.riskA[S.riskA.length-1]!=null?(S.riskA[S.riskA.length-1]>=75?'\u26A0 危險':S.riskA[S.riskA.length-1]>=50?'\u26A1 警戒':'\u2713 安全'):'N/A',
-      c:S.riskA[S.riskA.length-1]>=75?'#ef4444':S.riskA[S.riskA.length-1]>=50?'#f97316':'#22c55e'},
-    {l:'ATR('+CFG.atr_period+')',v:S.atrA[S.atrA.length-1]?fp(S.atrA[S.atrA.length-1]):'—',s:S.atrA[S.atrA.length-1]?((S.atrA[S.atrA.length-1]/px*100).toFixed(1)+'%波幅'):'N/A',c:'#5a7394'},
-    {l:'RSI慢線',v:S.rsiSlow[S.rsiSlow.length-1]!=null?S.rsiSlow[S.rsiSlow.length-1].toFixed(1):'—',s:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null)?(r>S.rsiSlow[S.rsiSlow.length-1]?'快>慢 多':'快<慢 空'):'N/A',c:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null&&r>S.rsiSlow[S.rsiSlow.length-1])?'#22c55e':'#ef4444'},
-  ];
-  const last=S.sigs[S.sigs.length-1];const{byP}=bStats();
-  let html='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 當前指標狀態</div>'
-    +rows.map(x=>'<div class="prow">'
-      +'<span style="font-size:10px;color:var(--dim)">'+x.l+'</span>'
-      +'<div style="text-align:right">'+(x.v?'<span style="font-size:9px;color:var(--mid);margin-right:4px">'+x.v+'</span>':'')+'<span style="font-size:10px;color:'+x.c+'">'+x.s+'</span></div>'
-    +'</div>').join('');
-  if(last){const bp=byP[last.pattern];
-    html+='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin:13px 0 7px">▸ 最新形態信號</div>'
-      +'<div style="background:#091525;border-radius:8px;border:1px solid #1a3a5f;padding:10px">'
-        +'<div style="font-size:13px;font-weight:bold;margin-bottom:3px">'+last.pattern+'</div>'
-        +'<div style="font-size:9px;color:var(--dim);margin-bottom:7px">'+last.date+' · 強度 '+last.str+'/'+last.maxStr+'</div>'
-        +'<div style="background:var(--bd);border-radius:2px;height:4px;margin-bottom:9px">'
-          +'<div style="width:'+(last.str/last.maxStr*100).toFixed(0)+'%;height:100%;border-radius:2px;background:'+(last.str/last.maxStr>0.7?'#22c55e':last.str/last.maxStr>0.5?'#f59e0b':'#ef4444')+'"></div>'
-        +'</div>'
-        +'<div style="margin-bottom:10px">'+last.conds.map(c=>'<div style="font-size:10px;color:#22c55e;padding:1.5px 0">✓ '+c+'</div>').join('')+'</div>'
-        +'<div style="background:#0a1424;border-radius:6px;padding:9px">'
-          +[['進場價格',fp(last.entry),'#60a5fa',''],['止盈目標 TP',fp(last.tp),'#22c55e','+'+last.tpPct+'%'],['止損位置 SL',fp(last.sl),'#ef4444','-'+last.slPct+'%']].map(([l,v,c,tag])=>
-            '<div style="display:flex;justify-content:space-between;padding:4px 0">'
-              +'<span style="font-size:9px;color:var(--dim)">'+l+'</span>'
-              +'<span style="font-size:12px;font-weight:bold;color:'+c+'">'+v+(tag?' <span style="font-size:9px;opacity:.7">'+tag+'</span>':'')+'</span>'
-            +'</div>').join('')
-          +'<div style="border-top:1px solid var(--bd);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between">'
-            +'<span style="font-size:9px;color:var(--dim)">風報比 R:R</span>'
-            +'<span style="font-size:12px;color:#f59e0b;font-weight:bold">1:'+(last.tpPct/last.slPct).toFixed(1)+'</span>'
-          +'</div>'
-        +'</div>'
-        +(bp?'<div style="margin-top:8px;background:#0a1424;border-radius:6px;padding:8px;text-align:center">'
-            +'<div style="font-size:9px;color:var(--dim);margin-bottom:2px">此形態歷史勝率</div>'
-            +'<div style="font-size:24px;font-weight:bold;color:'+(bp.w/bp.t>0.5?'#22c55e':'#ef4444')+'">'+(bp.w/bp.t*100).toFixed(0)+'%</div>'
-            +'<div style="font-size:9px;color:#2d4156">'+bp.w+'/'+bp.t+' 次達標</div>'
-          +'</div>':'')
-      +'</div>';}
+  // Entry/Exit markers
   if(S.entryMarkers.length||S.exitMarkers.length){
-    html+='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin:13px 0 7px">▸ 入場/出場標記</div>';
-    S.entryMarkers.slice(-3).reverse().forEach(em=>{
-      html+='<div style="background:#0a1a12;border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid #22c55e">'
-        +'<div style="display:flex;justify-content:space-between">'
-        +'<span style="font-size:10px;color:#22c55e">▲ BUY '+em.date+'</span>'
-        +'<span style="font-size:11px;font-weight:bold;color:#22c55e">勝率'+em.wr+'%</span>'
-        +'</div><div style="font-size:9px;color:#2d4156;margin-top:2px">'+em.pattern+' · '+fp(em.entry)+'</div></div>';
-    });
-    S.exitMarkers.slice(-3).reverse().forEach(ex=>{
-      html+='<div style="background:#1a0a0a;border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid #ef4444">'
-        +'<div style="display:flex;justify-content:space-between">'
-        +'<span style="font-size:10px;color:#ef4444">▼ EXIT '+ex.date+'</span>'
-        +'<span style="font-size:11px;font-weight:bold;color:#ef4444">風險'+ex.risk+'</span>'
-        +'</div><div style="font-size:9px;color:#2d4156;margin-top:2px">'+ex.reason+' · '+ex.entryPattern+'</div></div>';
-    });
+    h+='<div style="font-size:9px;color:#2d4156;margin:13px 0 7px">▸ 入場/出場標記</div>';
+    S.entryMarkers.slice(-3).reverse().forEach(function(em){h+='<div style="background:#0a1a12;border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid #22c55e"><div style="display:flex;justify-content:space-between"><span style="font-size:10px;color:#22c55e">▲ BUY '+em.date+'</span><span style="font-size:11px;font-weight:bold;color:#22c55e">勝率'+em.wr+'%</span></div><div style="font-size:9px;color:#2d4156">'+em.pattern+' · '+fp(em.entry)+'</div></div>'});
+    S.exitMarkers.slice(-3).reverse().forEach(function(ex){h+='<div style="background:#1a0a0a;border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid #ef4444"><div style="display:flex;justify-content:space-between"><span style="font-size:10px;color:#ef4444">▼ EXIT '+ex.date+'</span><span style="font-size:11px;font-weight:bold;color:#ef4444">風險'+ex.risk+'</span></div><div style="font-size:9px;color:#2d4156">'+ex.reason+' · '+ex.entryPattern+'</div></div>'});
   }
-  html+='<div style="margin:12px 0 6px;font-size:9px;color:#2d4156">▸ 歷史信號 ('+S.sigs.length+')</div>'
-    +S.sigs.slice().reverse().slice(0,8).map(s=>{
-      const bt=S.btR.find(r=>r.index===s.index);
-      const col=bt?.result==='WIN'?'#22c55e':bt?.result==='LOSS'?'#ef4444':'#2d4156';
-      return'<div style="background:var(--bg);border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid '+col+'">'
-        +'<div style="display:flex;justify-content:space-between">'
-          +'<span style="font-size:9px;color:var(--dim)">'+s.date+' '+s.pattern+'</span>'
-          +(bt?'<span style="font-size:10px;font-weight:bold;color:'+col+'">'+(bt.pnl>0?'+':'')+bt.pnl+'%</span>':'')
-        +'</div>'
-        +'<div style="font-size:9px;color:#2d4156;margin-top:1px">進:'+fp(s.entry)+' 盈:'+fp(s.tp)+' 損:'+fp(s.sl)+'</div>'
-      +'</div>';}).join('')
-    +(!S.sigs.length&&S.data.length?'<div style="font-size:10px;color:#2d4156;text-align:center;padding:20px 0">目前無滿足條件的形態信號</div>':'');
-  document.getElementById('panel-content').innerHTML=html;}
-
-/* ══ FETCH & ACTIONS ════════════════════════════════════ */
-async function fetchData(){
-  S.loading=true;S.error=null;renderAll();
-  try{
-    const ex=EX[S.ex],sym=ex.sym(S.coin),n=S.ex==='binance'?1000:({'3M':100,'1M':300,'1W':300,'1D':300,'4H':300,'1H':300,'15M':300}[S.tf]);
-    const data=await ex.get(sym,S.tf,n);
-    if(!data||data.length<30)throw new Error('資料不足，請稍後重試');
-    S.data=data;compute();S.updated=new Date().toLocaleTimeString();
-  }catch(e){
-    const msg=e.message||'載入失敗';
-    S.error=(msg.includes('400')||msg.includes('HTTP 4'))?
-      '找不到 '+EX[S.ex].sym(S.coin)+' ── 請確認是加密幣代號（如 BTC、PEPE），股票不適用':msg;
-  }finally{S.loading=false;renderAll();}
+  // History
+  h+='<div style="margin:12px 0 6px;font-size:9px;color:#2d4156">▸ 歷史信號 ('+S.sigs.length+')</div>';
+  S.sigs.slice().reverse().slice(0,8).forEach(function(s){var bt=S.btR.find(function(r){return r.index===s.index});var col=bt?bt.result==='WIN'?'#22c55e':'#ef4444':'#2d4156';h+='<div style="background:var(--bg);border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid '+col+'"><div style="display:flex;justify-content:space-between"><span style="font-size:9px;color:var(--dim)">'+s.date+' '+s.pattern+'</span>'+(bt?'<span style="font-size:10px;font-weight:bold;color:'+col+'">'+(bt.pnl>0?'+':'')+bt.pnl+'%</span>':'')+'</div><div style="font-size:9px;color:#2d4156">進:'+fp(s.entry)+' 盈:'+fp(s.tp)+' 損:'+fp(s.sl)+'</div></div>'});
+  if(!S.sigs.length)h+='<div style="font-size:10px;color:#2d4156;text-align:center;padding:20px 0">無信號</div>';
+  document.getElementById('pc').innerHTML=h;
 }
-function setEx(k){S.ex=k;fetchData();}
-function setTF(t){S.tf=t;fetchData();}
-function setTab(t){S.tab=t;renderCharts();}
-function setRange(r){S.range=r;renderCharts();}
-function toggleInd(k){IND[k]=!IND[k];renderCharts();}
-
-function applyCfg(){
-  const keys=['atr_period','atr_sl_mult','atr_tp_mult','atr_trail_mult',
-    'rsi_period','rsi_slow_period','rsi_oversold','rsi_overbought',
-    'vol_lookback','vol_surge_mult','ma200_proximity','min_signal_score','max_hold_bars'];
-  keys.forEach(k=>{
-    const el=document.getElementById('cfg_'+k);
-    if(el){const v=parseFloat(el.value);if(!isNaN(v))CFG[k]=v;}
-  });
-  compute();renderAll();
+/* ═══ SIDEBAR ═══ */
+function toggleFav(sym,e){if(e)e.stopPropagation();var idx=favs.indexOf(sym);if(idx>=0)favs.splice(idx,1);else favs.push(sym);localStorage.setItem('kl_favs',JSON.stringify(favs));renderSB();renderHdr()}
+function renderSB(){
+  document.getElementById('stAll').className='sb-tab'+(sideTab==='all'?' on':'');
+  document.getElementById('stFav').className='sb-tab'+(sideTab==='fav'?' on':'');
+  document.getElementById('stScan').className='sb-tab'+(sideTab==='scan'?' on':'');
+  var fv=(document.getElementById('sb-filter').value||'').trim().toUpperCase(),h='';
+  if(sideTab==='scan'){
+    var entries=Object.keys(scanResults).sort(function(a,b){return scanResults[b].wr-scanResults[a].wr});
+    if(fv)entries=entries.filter(function(s){return s.indexOf(fv)>=0});
+    if(!entries.length){h='<div style="text-align:center;padding:20px 10px;color:#2d4156;font-size:10px">'+(scanRunning?'掃描中… '+Object.keys(scanResults).length+'/'+top100.length:'點 ⟳ 開始掃描')+'</div>'}
+    else{if(lastScanTime)h+='<div style="font-size:9px;color:#2d4156;padding:4px 8px;border-bottom:1px solid #0d1825">上次: '+lastScanTime+'</div>';
+      entries.slice(0,20).forEach(function(sym,idx){var d=scanResults[sym],wrCol=d.wr>60?'#22c55e':d.wr>45?'#f59e0b':'#ef4444',isAct=sym===S.coin;
+        h+='<div class="ci'+(isAct?' active':'')+'" onclick="S.coin=\''+sym+'\';fetchData()"><span style="font-size:10px;color:'+wrCol+';font-weight:bold;min-width:16px;text-align:right">'+(idx+1)+'</span><div style="flex:1;min-width:0;overflow:hidden"><span style="font-size:12px;font-weight:bold;display:block">'+sym+'</span><span style="font-size:10px;color:var(--dim)">'+d.sigs+'訊號 '+d.wins+'勝</span></div><span style="font-size:13px;font-weight:bold;color:'+wrCol+';min-width:38px;text-align:right">'+d.wr.toFixed(0)+'%</span></div>'})}
+    document.getElementById('coin-list').innerHTML=h;return}
+  var list=sideTab==='fav'?top100.filter(function(c){return favs.indexOf(c.symbol)>=0}).concat(favs.filter(function(s){return!top100.some(function(c){return c.symbol===s})}).map(function(s){return{rank:'★',symbol:s,name:s,price:0,change24h:0}})):top100;
+  if(fv)list=list.filter(function(c){return c.symbol.indexOf(fv)>=0||(c.name||'').toUpperCase().indexOf(fv)>=0});
+  if(!list.length){document.getElementById('coin-list').innerHTML='<div style="text-align:center;padding:24px;color:#2d4156;font-size:10px">'+(sideTab==='fav'?'點 ☆ 加入最愛':'無結果')+'</div>';return}
+  list.forEach(function(c){var isFav=favs.indexOf(c.symbol)>=0,isAct=c.symbol===S.coin;var col=c.change24h>=0?'#22c55e':'#ef4444',chg=c.change24h?((c.change24h>=0?'+':'')+c.change24h.toFixed(1)+'%'):'—';
+    var sr=scanResults[c.symbol],badge=sr?'<span style="font-size:8px;padding:1px 3px;border-radius:2px;margin-left:3px;background:'+(sr.wr>55?'#22c55e22':'#ef444422')+';color:'+(sr.wr>55?'#22c55e':'#ef4444')+'">'+sr.wr.toFixed(0)+'%</span>':'';
+    h+='<div class="ci'+(isAct?' active':'')+'" onclick="S.coin=\''+c.symbol+'\';fetchData()"><span style="font-size:10px;color:var(--dim);min-width:16px;text-align:right">'+c.rank+'</span><div style="flex:1;min-width:0;overflow:hidden"><span style="font-size:12px;font-weight:bold;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+c.symbol+badge+'</span>'+(c.price?'<span style="font-size:10px;color:var(--dim)">'+fpS(c.price)+'</span>':'')+'</div><span style="font-size:10px;color:'+col+';min-width:38px;text-align:right">'+chg+'</span><span onclick="toggleFav(\''+c.symbol+'\',event)" style="font-size:14px;color:'+(isFav?'#f59e0b':'var(--dim)')+';cursor:pointer;padding:0 2px">'+(isFav?'★':'☆')+'</span></div>'});
+  document.getElementById('coin-list').innerHTML=h;
 }
-function resetCfg(){
-  Object.assign(CFG,{atr_period:14,atr_sl_mult:1.5,atr_tp_mult:3.0,atr_trail_mult:2.0,
-    rsi_period:14,rsi_slow_period:9,rsi_oversold:30,rsi_overbought:70,rsi_engulf_max:55,
-    rsi_macd_lo:45,rsi_macd_hi:72,rsi_bb_lo:55,rsi_bb_hi:78,
-    vol_lookback:10,vol_surge_mult:1.4,ema_periods:[100,200,300,500],ma200_proximity:0.015,
-    bb_period:20,bb_mult:2,macd_fast:12,macd_slow:26,macd_signal:9,
-    poc_lookback:60,poc_bins:50,hammer_shadow_ratio:2.5,hammer_wick_ratio:0.4,
-    engulf_tolerance:1.003,tws_gap_pct:0.006,min_signal_score:4,
-    entry_mode:'next_open',exit_mode:'trailing',max_hold_bars:120,fixed_hold_bars:30});
-  compute();renderAll();
-}
-window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(()=>renderAll(),200);});
-
-// ── Chart zoom & pan ──
-let isDragging=false,dragStartX=0,dragStartOffset=0;
-document.addEventListener('wheel',function(e){
-  const wrap=document.getElementById('candle-wrap');
-  if(!wrap||!wrap.contains(e.target))return;
-  e.preventDefault();
-  const delta=e.deltaY>0?-0.15:0.15;
-  zoomLevel=Math.max(0.3,Math.min(5.0,zoomLevel+delta));
-  // Adjust chartH based on zoom
-  chartH=Math.max(200,Math.min(800,Math.round(300*zoomLevel)));
-  renderCharts();
-},{passive:false});
-
-document.addEventListener('mousedown',function(e){
-  const wrap=document.getElementById('candle-wrap');
-  if(!wrap||!wrap.contains(e.target))return;
-  isDragging=true;dragStartX=e.clientX;dragStartOffset=panOffset;
-  wrap.style.cursor='grabbing';
-});
-document.addEventListener('mousemove',function(e){
-  if(!isDragging)return;
-  const dx=e.clientX-dragStartX;
-  panOffset=dragStartOffset+Math.round(dx/3);
-  renderCharts();
-});
-document.addEventListener('mouseup',function(){
-  if(!isDragging)return;
-  isDragging=false;
-  const wrap=document.getElementById('candle-wrap');
-  if(wrap)wrap.style.cursor='grab';
-});
-
-// Init
-renderHdr();renderCharts();renderPanel();
-fetchData();
-fetchTop100();
-startAutoScan();
-
-// Config display helper
-function showConfig(){
-  const el=document.getElementById('panel-content');
-  const rows=[
-    ['ATR 週期','atr_period'],['ATR 停損倍數 (N)','atr_sl_mult'],
-    ['ATR 停盈倍數 (M)','atr_tp_mult'],['ATR 移動停損倍數','atr_trail_mult'],
-    ['RSI 週期','rsi_period'],['RSI 慢線週期','rsi_slow_period'],
-    ['RSI 超賣','rsi_oversold'],['RSI 超買','rsi_overbought'],
-    ['成交量回看','vol_lookback'],['成交量放大倍數','vol_surge_mult'],
-    ['MA200 接近閾值','ma200_proximity'],['進場模式','entry_mode'],
-    ['出場模式','exit_mode'],['最大持倉K棒','max_hold_bars'],
-  ];
-  const h='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 系統參數 (CFG)</div>'
-    +rows.map(([l,k])=>'<div class="prow"><span style="font-size:10px;color:var(--dim)">'+l+'</span><span style="font-size:11px;color:var(--bl)">'+CFG[k]+'</span></div>').join('')
-    +'<div style="margin-top:12px;font-size:9px;color:#2d4156;line-height:1.6">'
-      +'<div style="color:#f59e0b;margin-bottom:4px">▸ 參數說明</div>'
-      +'<div>止損 = 進場價 - N × ATR</div>'
-      +'<div>止盈 = 進場價 + M × ATR</div>'
-      +'<div>移動停損 = 最高價 - T × ATR</div>'
-      +'<div style="margin-top:4px">進場: 訊號觸發後下一根開盤價</div>'
-      +'<div>RSI: 快線須高於慢線才計分</div>'
-    +'</div>';
-  el.innerHTML=h;
-}
+/* ═══ FETCH ═══ */
+function fetchTop100(){sbLoading=true;renderSB();fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=24h').then(function(r){if(!r.ok)throw new Error('rate limit');return r.json()}).then(function(d){top100=d.filter(function(c){return!STABLES.has(c.symbol.toUpperCase())}).map(function(c,i){return{rank:c.market_cap_rank||i+1,symbol:c.symbol.toUpperCase(),name:c.name,price:c.current_price||0,change24h:c.price_change_percentage_24h||0}})}).catch(function(){top100=FALLBACK}).finally(function(){sbLoading=false;renderSB()})}
+function fetchData(){S.loading=true;S.error=null;renderAll();var ex=EX[S.ex],sym=ex.sym(S.coin),n=S.ex==='binance'?1000:300;ex.get(sym,S.tf,n).then(function(data){if(!data||data.length<30)throw new Error('資料不足');S.data=data;compute();S.updated=new Date().toLocaleTimeString()}).catch(function(e){var msg=e.message||'載入失敗';S.error=(msg.indexOf('400')>=0||msg.indexOf('HTTP 4')>=0)?'找不到 '+EX[S.ex].sym(S.coin)+' — 僅支援加密貨幣USDT對':msg}).finally(function(){S.loading=false;renderAll()})}
+function applyCfg(){['atr_period','atr_sl_mult','atr_tp_mult','atr_trail_mult','rsi_period','rsi_slow_period','rsi_oversold','rsi_overbought','vol_lookback','vol_surge_mult','ma200_proximity','min_signal_score','max_hold_bars'].forEach(function(k){var el=document.getElementById('cfg_'+k);if(el){var v=parseFloat(el.value);if(!isNaN(v))CFG[k]=v}});compute();renderAll()}
+function resetCfg(){Object.assign(CFG,{atr_period:14,atr_sl_mult:1.5,atr_tp_mult:3.0,atr_trail_mult:2.0,rsi_period:14,rsi_slow_period:9,rsi_oversold:30,rsi_overbought:70,rsi_engulf_max:55,rsi_macd_lo:45,rsi_macd_hi:72,rsi_bb_lo:55,rsi_bb_hi:78,vol_lookback:10,vol_surge_mult:1.4,ema_periods:[100,200,300,500],ma200_proximity:0.015,bb_period:20,bb_mult:2,min_signal_score:4,max_hold_bars:120});compute();renderAll()}
+/* ═══ SCAN ═══ */
+function scanWR(){if(scanRunning)return;scanRunning=true;scanResults={};renderSB();var coins=top100.map(function(c){return c.symbol}).slice(0,100),ci=0;
+function next(){if(ci>=coins.length){scanRunning=false;lastScanTime=new Date().toLocaleTimeString();renderSB();return}
+var sym=coins[ci++];EX[S.ex].get(EX[S.ex].sym(sym),'1D',300).then(function(data){if(!data||data.length<50)return;
+var cl=data.map(function(d){return d.close}),vl=data.map(function(d){return d.volume});
+var old={data:S.data,cl:S.cl,vl:S.vl,macd:S.macd,rsi:S.rsi,rsiSlow:S.rsiSlow,ma200:S.ma200,bb:S.bb,atrA:S.atrA,emas:S.emas,ma50:S.ma50,poc:S.poc,riskA:S.riskA,sigs:S.sigs,btR:S.btR,entryMarkers:S.entryMarkers,exitMarkers:S.exitMarkers};
+S.data=data;S.cl=cl;S.vl=vl;S.macd=_macd(cl);S.rsi=_rsi(cl);S.rsiSlow=_rsiSlow(S.rsi);S.atrA=_atr(data);S.emas={};CFG.ema_periods.forEach(function(p){S.emas[p]=cl.length>=p?_ema(cl,p):cl.map(function(){return null})});S.ma200=S.emas[200]||cl.map(function(){return null});S.ma50=S.emas[100]||cl.map(function(){return null});S.bb=cl.length>=20?_bb(cl):{up:[],mid:[],lo:[]};S.poc=data.length>=60?_poc(data):null;
+detectSignals();doBacktest();
+var sigs=S.sigs.length,wins=S.btR.filter(function(r){return r.result==='WIN'}).length;
+if(sigs>=2)scanResults[sym]={sigs:sigs,wins:wins,wr:+(wins/sigs*100).toFixed(1)};
+Object.assign(S,old)}).catch(function(){}).finally(function(){if(ci%5===0)renderSB();setTimeout(next,350)})};next()}
+/* ═══ RENDER ALL ═══ */
+function renderAll(){renderHdr();renderCharts();renderPanel();renderSB()}
+/* ═══ EVENTS ═══ */
+var resizeT;window.addEventListener('resize',function(){clearTimeout(resizeT);resizeT=setTimeout(renderAll,200)});
+window.addEventListener('wheel',function(e){var w=document.getElementById('candle-wrap');if(!w||!w.contains(e.target))return;e.preventDefault();zoomLevel=Math.max(0.3,Math.min(5,zoomLevel+(e.deltaY>0?-0.15:0.15)));chartH=Math.max(200,Math.min(800,Math.round(300*zoomLevel)));renderCharts()},{passive:false});
+var isDrag=false,dragX=0,dragOff=0;
+document.addEventListener('mousedown',function(e){var w=document.getElementById('candle-wrap');if(w&&w.contains(e.target)){isDrag=true;dragX=e.clientX;dragOff=panOffset;w.style.cursor='grabbing'}});
+document.addEventListener('mousemove',function(e){if(!isDrag)return;panOffset=dragOff+Math.round((e.clientX-dragX)/3);renderCharts()});
+document.addEventListener('mouseup',function(){if(isDrag){isDrag=false;var w=document.getElementById('candle-wrap');if(w)w.style.cursor='grab'}});
+/* ═══ INIT ═══ */
+renderAll();fetchData();fetchTop100();
+setInterval(function(){if(top100.length>0)scanWR()},3600000);
 </script>
 </body>
 </html>
