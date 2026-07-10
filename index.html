@@ -65,6 +65,11 @@ button{cursor:pointer;font-family:'Courier New',monospace;font-size:12px;border-
 #main{display:flex;flex:1;overflow:hidden}
 #charts{flex:1;overflow-y:auto;padding:7px 5px 7px 7px}
 #candle-wrap{position:relative;cursor:grab;user-select:none;touch-action:none}
+.ind-bar{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px;align-items:center}
+.ind-tog{padding:2px 6px;border-radius:3px;border:1px solid #162233;background:transparent;
+  font-size:10px;cursor:pointer;font-family:'Courier New',monospace}
+.ind-tog.on{background:rgba(96,165,250,0.1);color:#60a5fa;border-color:#1e40af}
+.ind-tog.off{color:#1e2a3a;border-color:#0d1825}
 #panel{width:300px;background:var(--card);border-left:1px solid var(--bd);padding:10px;overflow-y:auto;flex-shrink:0}
 .cbox{background:var(--card);border-radius:7px;margin-bottom:5px;padding:4px 6px}
 .clbl{font-size:11px;color:var(--dim);margin-bottom:2px;display:flex;gap:10px;align-items:center}
@@ -163,7 +168,7 @@ const EX={
 
 /* ══ STATE ══════════════════════════════════════════════ */
 const S={ex:'binance',coin:'BTC',tf:'1D',range:'recent',data:[],loading:false,error:null,tab:'chart',updated:null,
-  cl:[],vl:[],macd:{line:[],sig:[],hist:[]},rsi:[],rsiSlow:[],atrA:[],ma200:[],ma50:[],emas:{},bb:{up:[],mid:[],lo:[]},poc:null,sigs:[],btR:[]};
+  cl:[],vl:[],macd:{line:[],sig:[],hist:[]},rsi:[],rsiSlow:[],atrA:[],ma200:[],ma50:[],emas:{},bb:{up:[],mid:[],lo:[]},poc:null,sigs:[],btR:[],riskA:[],entryMarkers:[],exitMarkers:[]};
 let sideTab='all';
 let top100=[];
 let sbLoading=true;
@@ -556,6 +561,41 @@ function compute(){
   S.bb=S.cl.length>=CFG.bb_period?_bb(S.cl):{up:[],mid:[],lo:[]};
   S.poc=D.length>=CFG.poc_lookback?_poc(D):null;
   detectSignals();doBacktest();
+
+  // Risk Index (0-100)
+  S.riskA=S.cl.map((_,i)=>{
+    if(i<20) return null;
+    let risk=50;
+    const r=S.rsi[i],rSl=S.rsiSlow[i],mh=S.macd.hist[i],ml=S.macd.line[i],ms=S.macd.sig[i];
+    const m2=S.ma200[i],px=S.cl[i],bbu=S.bb.up[i],bbl=S.bb.lo[i],atr=S.atrA[i];
+    const avV=S.vl.slice(Math.max(0,i-CFG.vol_lookback),i).reduce((a,b)=>a+b,0)/CFG.vol_lookback||1;
+    if(r!=null){if(r>80)risk+=20;else if(r>70)risk+=12;else if(r>60)risk+=5;
+      if(r<20)risk+=15;else if(r<30)risk+=8;
+      if(rSl!=null&&r<rSl)risk+=5;}
+    if(mh!=null){if(mh<0)risk+=8;if(ml!=null&&ms!=null&&ml<ms)risk+=7;
+      const mp=S.macd.hist[i-1];if(mp!=null&&mh<mp&&mh<0)risk+=5;}
+    if(m2!=null){if(px<m2)risk+=10;if(px<m2*0.95)risk+=5;}
+    if(bbu!=null&&px>bbu)risk+=5;if(bbl!=null&&px<bbl)risk+=5;
+    if(atr!=null&&i>=2){const pa=S.atrA[i-1];if(pa&&atr>pa*1.5)risk+=8;else if(pa&&atr>pa*1.2)risk+=4;}
+    if(S.vl[i]/avV>2.5)risk+=5;else if(S.vl[i]/avV>1.8)risk+=3;
+    let drops=0;for(let j=i;j>Math.max(0,i-5);j--){if(S.cl[j]<S.cl[j-1])drops++;}
+    if(drops>=4)risk+=8;else if(drops>=3)risk+=4;
+    return Math.max(0,Math.min(100,Math.round(risk)));
+  });
+  S.entryMarkers=[];S.exitMarkers=[];
+  const{byP:_bp}=bStatsCalc();
+  S.sigs.forEach(sig=>{
+    const bp=_bp[sig.pattern];
+    if(bp&&bp.t>=2&&(bp.w/bp.t)>=0.6)
+      S.entryMarkers.push({index:sig.index,date:sig.date,price:sig.entry,pattern:sig.pattern,
+        wr:+(bp.w/bp.t*100).toFixed(0),entry:sig.entry,tp:sig.tp,sl:sig.sl});
+  });
+  S.entryMarkers.forEach(em=>{
+    for(let i=em.index+1;i<Math.min(S.data.length,em.index+CFG.max_hold_bars);i++){
+      if(S.riskA[i]!=null&&S.riskA[i]>=75){
+        S.exitMarkers.push({index:i,date:S.data[i].date,price:S.data[i].close,risk:S.riskA[i],
+          reason:S.riskA[i]>=85?'極高風險':'高風險',entryPattern:em.pattern});break;}}
+  });
 }
 
 /* ══ SVG ════════════════════════════════════════════════ */
@@ -564,7 +604,7 @@ const fmtP=v=>{const a=Math.abs(v);
   if(a>=100000)return(v/1000).toFixed(0)+'K';if(a>=10000)return(v/1000).toFixed(1)+'K';
   if(a>=100)return v.toFixed(0);return v.toFixed(4);};
 
-function svgCandle(C,ma200,ma50,bb,poc,sigs,w,h,emas){
+function svgCandle(C,ma200,ma50,bb,poc,sigs,w,h,emas,entries,exits){
   const P={t:12,r:76,b:18,l:6};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=C.length;
   if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
   const bw=Math.max(2,cw/n-0.8);
@@ -578,21 +618,22 @@ function svgCandle(C,ma200,ma50,bb,poc,sigs,w,h,emas){
   [0,.25,.5,.75,1].forEach(f=>{const p=mn+f*R,y=ty(p).toFixed(1);
     s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="#12213a" stroke-width="1" stroke-dasharray="4 3"/>';
     s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(p)+4).toFixed(1)+'" fill="#3a5070" font-size="9" font-family="monospace">'+fmtP(p)+'</text>';});
-  if(poc!=null){const py=ty(poc).toFixed(1);
+  if(poc!=null&&IND.poc){const py=ty(poc).toFixed(1);
     s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+py+'" y2="'+py+'" stroke="#9333ea" stroke-width="1.5" stroke-dasharray="6 3" opacity=".85"/>';
     s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(poc)-2).toFixed(1)+'" fill="#9333ea" font-size="8" font-family="monospace">POC</text>';
     s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(poc)+9).toFixed(1)+'" fill="#7c3aed" font-size="8" font-family="monospace">'+fmtP(poc)+'</text>';}
   const upPts=bb.up.map((v,i)=>v!=null?tx(i).toFixed(1)+','+ty(v).toFixed(1):null).filter(Boolean);
   const loPts=bb.lo.map((v,i)=>v!=null?tx(i).toFixed(1)+','+ty(v).toFixed(1):null).filter(Boolean);
-  if(upPts.length&&loPts.length)s+='<path d="M'+upPts.join('L')+'L'+loPts.slice().reverse().join('L')+'Z" fill="rgba(59,130,246,0.055)"/>';
+  if(upPts.length&&loPts.length&&IND.bb)s+='<path d="M'+upPts.join('L')+'L'+loPts.slice().reverse().join('L')+'Z" fill="rgba(59,130,246,0.055)"/>';
   const bbU=lp(bb.up,tx,ty),bbL=lp(bb.lo,tx,ty),bbM=lp(bb.mid,tx,ty);
-  if(bbU)s+='<path d="'+bbU+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';
-  if(bbL)s+='<path d="'+bbL+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';
-  if(bbM)s+='<path d="'+bbM+'" fill="none" stroke="#6366f1" stroke-width="1" opacity=".45"/>';
+  if(bbU&&IND.bb)s+='<path d="'+bbU+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';
+  if(bbL&&IND.bb)s+='<path d="'+bbL+'" fill="none" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 2" opacity=".65"/>';
+  if(bbM&&IND.bb)s+='<path d="'+bbM+'" fill="none" stroke="#6366f1" stroke-width="1" opacity=".45"/>';
   // EMA lines with distinct colors
   const emaColors={'100':'#38bdf8','200':'#f59e0b','300':'#a78bfa','500':'#ef4444'};
   const emaDash={'100':'5 2','200':'','300':'4 3','500':'6 2'};
   if(emas){Object.entries(emas).forEach(([p,arr])=>{
+    if(!IND['ema'+p]) return;
     const ep=lp(arr,tx,ty);
     if(ep)s+='<path d="'+ep+'" fill="none" stroke="'+(emaColors[p]||'#5a7394')+'" stroke-width="'+(p==='200'?'1.5':'1.2')+'" opacity=".85" '+(emaDash[p]?'stroke-dasharray="'+emaDash[p]+'"':'')+'/>';
   });}
@@ -600,10 +641,25 @@ function svgCandle(C,ma200,ma50,bb,poc,sigs,w,h,emas){
     const bt=ty(Math.max(c.open,c.close)),bb2=ty(Math.min(c.open,c.close));
     s+='<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+ty(c.high).toFixed(1)+'" y2="'+ty(c.low).toFixed(1)+'" stroke="'+col+'" stroke-width="1"/>';
     s+='<rect x="'+(x-bw/2).toFixed(1)+'" y="'+bt.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(1,bb2-bt).toFixed(1)+'" fill="'+col+'" opacity=".9"/>';});
+  if(!IND.signals) sigs=[];
   sigs.forEach(sig=>{const li=sig.index-(C[0]?.i||0);if(li<0||li>=n)return;
     const x=tx(li),y=ty(C[li]?.low??sig.close)+13;
     s+='<polygon points="'+x.toFixed(1)+','+y.toFixed(1)+' '+(x-5).toFixed(1)+','+(y+9).toFixed(1)+' '+(x+5).toFixed(1)+','+(y+9).toFixed(1)+'" fill="#f59e0b" opacity=".95"/>';
     s+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="2" fill="#fde68a"/>';});
+  // BUY markers
+  if(IND.signals&&entries){entries.forEach(em=>{
+    const li=em.index-(C[0]?.i||0);if(li<0||li>=n)return;
+    const x=tx(li),y=ty(C[li]?.low??em.price)+24;
+    s+='<rect x="'+(x-14).toFixed(1)+'" y="'+y.toFixed(1)+'" width="28" height="12" rx="2" fill="#22c55e" opacity=".9"/>';
+    s+='<text x="'+x.toFixed(1)+'" y="'+(y+9).toFixed(1)+'" text-anchor="middle" fill="#000" font-size="7" font-weight="bold" font-family="monospace">BUY '+em.wr+'%</text>';
+  });}
+  // EXIT markers
+  if(IND.signals&&exits){exits.forEach(ex=>{
+    const li=ex.index-(C[0]?.i||0);if(li<0||li>=n)return;
+    const x=tx(li),y=ty(C[li]?.high??ex.price)-17;
+    s+='<rect x="'+(x-15).toFixed(1)+'" y="'+y.toFixed(1)+'" width="30" height="12" rx="2" fill="#ef4444" opacity=".9"/>';
+    s+='<text x="'+x.toFixed(1)+'" y="'+(y+9).toFixed(1)+'" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold" font-family="monospace">EXIT '+ex.risk+'</text>';
+  });}
   const ev=Math.max(1,Math.floor(n/(n>400?12:8)));
   C.forEach((c,i)=>{if(i%ev!==0)return;
     s+='<text x="'+tx(i).toFixed(1)+'" y="'+(P.t+ch+13).toFixed(1)+'" text-anchor="middle" fill="#253a52" font-size="9" font-family="monospace">'+c.date+'</text>';});
@@ -641,6 +697,21 @@ function svgMACD(sub,w,h){
   const sp=lp(sub.map(d=>d.sig),tx,ty);if(sp)s+='<path d="'+sp+'" fill="none" stroke="#f97316" stroke-width="1"/>';
   return s+'</svg>';}
 
+function svgRisk(sub,w,h){
+  const P={t:4,r:76,b:4,l:28};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=sub.length;
+  if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
+  const tx=i=>P.l+(i+0.5)*(cw/n),ty=v=>P.t+ch-((v/100)*ch);
+  let s='<svg width="'+w+'" height="'+h+'" style="display:block;max-width:100%">';
+  s+='<rect x="'+P.l+'" y="'+P.t+'" width="'+cw+'" height="'+ch+'" fill="#000" rx="3"/>';
+  s+='<rect x="'+P.l+'" y="'+ty(100).toFixed(1)+'" width="'+cw+'" height="'+(ty(75)-ty(100)).toFixed(1)+'" fill="rgba(239,68,68,0.08)"/>';
+  s+='<rect x="'+P.l+'" y="'+ty(25).toFixed(1)+'" width="'+cw+'" height="'+(ty(0)-ty(25)).toFixed(1)+'" fill="rgba(34,197,94,0.05)"/>';
+  [[75,'#ef4444'],[50,'#f97316'],[25,'#22c55e']].forEach(([v,col])=>{const y=ty(v).toFixed(1);
+    s+='<line x1="'+P.l+'" x2="'+(P.l+cw)+'" y1="'+y+'" y2="'+y+'" stroke="'+col+'" stroke-width="1" stroke-dasharray="3 3" opacity=".4"/>';
+    s+='<text x="'+(P.l+cw+4)+'" y="'+(ty(v)+4).toFixed(1)+'" fill="'+col+'" font-size="8" font-family="monospace">'+v+'</text>';});
+  for(let i=1;i<n;i++){const r0=sub[i-1].risk,r1=sub[i].risk;if(r0==null||r1==null)continue;
+    const col=r1>=75?'#ef4444':r1>=50?'#f97316':r1>=25?'#f59e0b':'#22c55e';
+    s+='<line x1="'+tx(i-1).toFixed(1)+'" y1="'+ty(r0).toFixed(1)+'" x2="'+tx(i).toFixed(1)+'" y2="'+ty(r1).toFixed(1)+'" stroke="'+col+'" stroke-width="2"/>';}
+  return s+'</svg>';}
 function svgRSI(sub,w,h){
   const P={t:4,r:76,b:4,l:28};const cw=w-P.l-P.r,ch=h-P.t-P.b,n=sub.length;
   if(!n)return'<svg width="'+w+'" height="'+h+'"></svg>';
@@ -796,6 +867,7 @@ function startAutoScan(){
 }
 
 /* ══ DISPLAY & RENDER ═══════════════════════════════════ */
+const IND={ema100:true,ema200:true,ema300:false,ema500:false,bb:true,poc:true,vol:true,macd:true,rsi:true,risk:true,signals:true};
 let chartW=640,chartH=300,zoomLevel=1.0,panOffset=0,resizeT=null;
 function getDisp(){
   const baseShow=S.range==='all'?S.data.length:({'3M':60,'1M':80,'1W':80,'1D':80,'4H':120,'1H':100,'15M':100}[S.tf]||80);
@@ -806,10 +878,17 @@ function getDisp(){
   return{si,candles:S.data.slice(si),ma200:S.ma200.slice(si),ma50:S.ma50.slice(si),
     emas:Object.fromEntries(CFG.ema_periods.map(p=>[p,(S.emas[p]||[]).slice(si)])),
     bb:{up:S.bb.up.slice(si),mid:(S.bb.mid||[]).slice(si),lo:S.bb.lo.slice(si)},
-    sigs:S.sigs.filter(s=>s.index>=si),
+    sigs:S.sigs.filter(s=>s.index>=si),entries:S.entryMarkers.filter(e=>e.index>=si),exits:S.exitMarkers.filter(e=>e.index>=si),
     sub:S.data.slice(si).map((c,ii)=>({date:c.date,vol:c.volume,bull:c.close>=c.open,
-      macd:S.macd.line[si+ii],sig:S.macd.sig[si+ii],hist:S.macd.hist[si+ii],rsi:S.rsi[si+ii],rsiSlow:S.rsiSlow[si+ii]}))};
+      macd:S.macd.line[si+ii],sig:S.macd.sig[si+ii],hist:S.macd.hist[si+ii],rsi:S.rsi[si+ii],rsiSlow:S.rsiSlow[si+ii],risk:S.riskA[si+ii]}))};
 }
+function bStatsCalc(){
+  const wins=S.btR.filter(r=>r.result==='WIN').length,tot=S.btR.length;
+  const wr=tot?+(wins/tot*100).toFixed(1):0;
+  const avgW=wins?+(S.btR.filter(r=>r.result==='WIN').reduce((a,r)=>a+r.pnl,0)/wins).toFixed(2):0;
+  const avgL=(tot-wins)?+(S.btR.filter(r=>r.result==='LOSS').reduce((a,r)=>a+r.pnl,0)/(tot-wins)).toFixed(2):0;
+  const byP={};S.btR.forEach(r=>{if(!byP[r.pattern])byP[r.pattern]={w:0,t:0};byP[r.pattern].t++;if(r.result==='WIN')byP[r.pattern].w++;});
+  return{wins,tot,wr,avgW,avgL,byP};}
 function bStats(){
   const wins=S.btR.filter(r=>r.result==='WIN').length,tot=S.btR.length;
   const wr=tot?+(wins/tot*100).toFixed(1):0;
@@ -895,10 +974,11 @@ function renderCharts(){
       +'<span style="color:#60a5fa">-- BB(20,2)</span><span style="color:#6366f1">── BB中軌</span>'
       +'<span style="color:#9333ea">-- POC</span><span style="color:#f59e0b">▲ 形態信號</span>'
       +'</div>'
-      +'<div id="candle-wrap" style="background:#000000;border-radius:7px;margin-bottom:5px;padding:5px 0 2px;overflow:hidden">'+svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,chartH,d.emas)+'</div>'
-      +'<div class="cbox"><div class="clbl">成交量 Volume</div>'+svgVol(sub,chartW,58)+'</div>'
-      +'<div class="cbox"><div class="clbl">MACD(12,26,9) <span style="color:#60a5fa">── MACD</span><span style="color:#f97316">── Signal</span></div>'+svgMACD(sub,chartW,90)+'</div>'
-      +'<div class="cbox"><div class="clbl">RSI(14) <span style="color:#a78bfa">── 快線</span> <span style="color:#f97316">-- 慢線(MA9)</span> <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>'+svgRSI(sub,chartW,90)+'</div>';
+      +'<div id="candle-wrap" style="background:#000000;border-radius:7px;margin-bottom:5px;padding:5px 0 2px;overflow:hidden">'+svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,chartH,d.emas,d.entries||[],d.exits||[])+'</div>'
+      +(IND.vol?'<div class="cbox"><div class="clbl">成交量</div>'+svgVol(sub,chartW,58)+'</div>':'')
+      +(IND.macd?'<div class="cbox"><div class="clbl">MACD(12,26,9) <span style="color:#60a5fa">── MACD</span><span style="color:#f97316">── Signal</span></div>'+svgMACD(sub,chartW,90)+'</div>':'')
+      +(IND.rsi?'<div class="cbox"><div class="clbl">RSI(14) <span style="color:#a78bfa">── 快線</span> <span style="color:#f97316">-- 慢線(MA9)</span> <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>'+svgRSI(sub,chartW,90)+'</div>':'')
+      +(IND.risk?'<div class="cbox"><div class="clbl">風險指數 <span style="color:#22c55e">25安全</span> / <span style="color:#f97316">50警戒</span> / <span style="color:#ef4444">75危險</span></div>'+svgRisk(sub,chartW,80)+'</div>':'')
   }else{
     const{wins,tot,wr,avgW,avgL,byP}=bStats();
     html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px">'
@@ -1003,6 +1083,9 @@ function renderPanel(){
     {l:'BB上軌',v:bbu?fp(bbu):'—',s:bbu?px>bbu?'已突破':'正常':'—',c:px>bbu?'#f59e0b':'#5a7394'},
     {l:'BB下軌',v:bbl?fp(bbl):'—',s:bbl?px<bbl?'已跌破':'正常':'—',c:px<bbl?'#ef4444':'#5a7394'},
     {l:'POC',v:S.poc?fp(S.poc):'—',s:S.poc?px>S.poc?'高於POC':'低於POC':'—',c:S.poc&&px>S.poc?'#22c55e':'#ef4444'},
+    {l:'風險指數',v:S.riskA[S.riskA.length-1]!=null?S.riskA[S.riskA.length-1]:'—',
+      s:S.riskA[S.riskA.length-1]!=null?(S.riskA[S.riskA.length-1]>=75?'\u26A0 危險':S.riskA[S.riskA.length-1]>=50?'\u26A1 警戒':'\u2713 安全'):'N/A',
+      c:S.riskA[S.riskA.length-1]>=75?'#ef4444':S.riskA[S.riskA.length-1]>=50?'#f97316':'#22c55e'},
     {l:'ATR('+CFG.atr_period+')',v:S.atrA[S.atrA.length-1]?fp(S.atrA[S.atrA.length-1]):'—',s:S.atrA[S.atrA.length-1]?((S.atrA[S.atrA.length-1]/px*100).toFixed(1)+'%波幅'):'N/A',c:'#5a7394'},
     {l:'RSI慢線',v:S.rsiSlow[S.rsiSlow.length-1]!=null?S.rsiSlow[S.rsiSlow.length-1].toFixed(1):'—',s:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null)?(r>S.rsiSlow[S.rsiSlow.length-1]?'快>慢 多':'快<慢 空'):'N/A',c:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null&&r>S.rsiSlow[S.rsiSlow.length-1])?'#22c55e':'#ef4444'},
   ];
@@ -1070,6 +1153,292 @@ function setEx(k){S.ex=k;fetchData();}
 function setTF(t){S.tf=t;fetchData();}
 function setTab(t){S.tab=t;renderCharts();}
 function setRange(r){S.range=r;renderCharts();}
+function toggleInd(k){IND[k]=!IND[k];renderCharts();}
+function applyCfg(){
+  const keys=['atr_period','atr_sl_mult','atr_tp_mult','atr_trail_mult',
+    'rsi_period','rsi_slow_period','rsi_oversold','rsi_overbought',
+    'vol_lookback','vol_surge_mult','ma200_proximity','min_signal_score','max_hold_bars'];
+  keys.forEach(k=>{
+    const el=document.getElementById('cfg_'+k);
+    if(el){const v=parseFloat(el.value);if(!isNaN(v))CFG[k]=v;}
+  });
+  compute();renderAll();
+}
+function resetCfg(){
+  Object.assign(CFG,{atr_period:14,atr_sl_mult:1.5,atr_tp_mult:3.0,atr_trail_mult:2.0,
+    rsi_period:14,rsi_slow_period:9,rsi_oversold:30,rsi_overbought:70,rsi_engulf_max:55,
+    rsi_macd_lo:45,rsi_macd_hi:72,rsi_bb_lo:55,rsi_bb_hi:78,
+    vol_lookback:10,vol_surge_mult:1.4,ema_periods:[100,200,300,500],ma200_proximity:0.015,
+    bb_period:20,bb_mult:2,macd_fast:12,macd_slow:26,macd_signal:9,
+    poc_lookback:60,poc_bins:50,hammer_shadow_ratio:2.5,hammer_wick_ratio:0.4,
+    engulf_tolerance:1.003,tws_gap_pct:0.006,min_signal_score:4,
+    entry_mode:'next_open',exit_mode:'trailing',max_hold_bars:120,fixed_hold_bars:30});
+  compute();renderAll();
+}
+window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(()=>renderAll(),200);});
+
+// ── Chart zoom & pan ──
+let isDragging=false,dragStartX=0,dragStartOffset=0;
+document.addEventListener('wheel',function(e){
+  const wrap=document.getElementById('candle-wrap');
+  if(!wrap||!wrap.contains(e.target))return;
+  e.preventDefault();
+  const delta=e.deltaY>0?-0.15:0.15;
+  zoomLevel=Math.max(0.3,Math.min(5.0,zoomLevel+delta));
+  // Adjust chartH based on zoom
+  chartH=Math.max(200,Math.min(800,Math.round(300*zoomLevel)));
+  renderCharts();
+},{passive:false});
+
+document.addEventListener('mousedown',function(e){
+  const wrap=document.getElementById('candle-wrap');
+  if(!wrap||!wrap.contains(e.target))return;
+  isDragging=true;dragStartX=e.clientX;dragStartOffset=panOffset;
+  wrap.style.cursor='grabbing';
+});
+document.addEventListener('mousemove',function(e){
+  if(!isDragging)return;
+  const dx=e.clientX-dragStartX;
+  panOffset=dragStartOffset+Math.round(dx/3);
+  renderCharts();
+});
+document.addEventListener('mouseup',function(){
+  if(!isDragging)return;
+  isDragging=false;
+  const wrap=document.getElementById('candle-wrap');
+  if(wrap)wrap.style.cursor='grab';
+});
+
+// Init
+renderHdr();renderCharts();renderPanel();
+fetchData();
+fetchTop100();
+startAutoScan();
+
+// Config display helper
+function showConfig(){
+  const el=document.getElementById('panel-content');
+  const rows=[
+    ['ATR 週期','atr_period'],['ATR 停損倍數 (N)','atr_sl_mult'],
+    ['ATR 停盈倍數 (M)','atr_tp_mult'],['ATR 移動停損倍數','atr_trail_mult'],
+    ['RSI 週期','rsi_period'],['RSI 慢線週期','rsi_slow_period'],
+    ['RSI 超賣','rsi_oversold'],['RSI 超買','rsi_overbought'],
+    ['成交量回看','vol_lookback'],['成交量放大倍數','vol_surge_mult'],
+    ['MA200 接近閾值','ma200_proximity'],['進場模式','entry_mode'],
+    ['出場模式','exit_mode'],['最大持倉K棒','max_hold_bars'],
+  ];
+  const h='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 系統參數 (CFG)</div>'
+    +rows.map(([l,k])=>'<div class="prow"><span style="font-size:10px;color:var(--dim)">'+l+'</span><span style="font-size:11px;color:var(--bl)">'+CFG[k]+'</span></div>').join('')
+    +'<div style="margin-top:12px;font-size:9px;color:#2d4156;line-height:1.6">'
+      +'<div style="color:#f59e0b;margin-bottom:4px">▸ 參數說明</div>'
+      +'<div>止損 = 進場價 - N × ATR</div>'
+      +'<div>止盈 = 進場價 + M × ATR</div>'
+      +'<div>移動停損 = 最高價 - T × ATR</div>'
+      +'<div style="margin-top:4px">進場: 訊號觸發後下一根開盤價</div>'
+      +'<div>RSI: 快線須高於慢線才計分</div>'
+    +'</div>';
+  el.innerHTML=h;
+}
+</script>
+</body>
+</html+`<div class="ind-bar"><span style="font-size:9px;color:#2d4156">主圖:</span>${[['ema100','E100'],['ema200','E200'],['ema300','E300'],['ema500','E500'],['bb','BB'],['poc','POC'],['signals','信號']].map(([k,l])=>`<button class="ind-tog ${IND[k]?'on':'off'}" onclick="toggleInd('${k}')">${l}</button>`).join('')}</div>`+`<div class="ind-bar"><span style="font-size:9px;color:#2d4156">副圖:</span>${[['vol','VOL'],['macd','MACD'],['rsi','RSI'],['risk','風險']].map(([k,l])=>`<button class="ind-tog ${IND[k]?'on':'off'}" onclick="toggleInd('${k}')">${l}</button>`).join('')}</div>`
+      +'<div id="candle-wrap" style="background:#000000;border-radius:7px;margin-bottom:5px;padding:5px 0 2px;overflow:hidden">'+svgCandle(candles,ma200,ma50,bb,S.poc,sigs,chartW,chartH,d.emas,d.entries||[],d.exits||[])+'</div>'
+      +(IND.vol?'<div class="cbox"><div class="clbl">成交量</div>'+svgVol(sub,chartW,58)+'</div>':'')
+      +(IND.macd?'<div class="cbox"><div class="clbl">MACD(12,26,9) <span style="color:#60a5fa">── MACD</span><span style="color:#f97316">── Signal</span></div>'+svgMACD(sub,chartW,90)+'</div>':'')
+      +(IND.rsi?'<div class="cbox"><div class="clbl">RSI(14) <span style="color:#a78bfa">── 快線</span> <span style="color:#f97316">-- 慢線(MA9)</span> <span style="color:#22c55e">30超賣</span> / <span style="color:#ef4444">70超買</span></div>'+svgRSI(sub,chartW,90)+'</div>':'')
+      +(IND.risk?'<div class="cbox"><div class="clbl">風險指數 <span style="color:#22c55e">25安全</span> / <span style="color:#f97316">50警戒</span> / <span style="color:#ef4444">75危險</span></div>'+svgRisk(sub,chartW,80)+'</div>':'')
+  }else{
+    const{wins,tot,wr,avgW,avgL,byP}=bStats();
+    html+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:10px">'
+      +[['總信號數',tot,'#60a5fa'],['歷史勝率',wr+'%',wr>55?'#22c55e':wr>45?'#f59e0b':'#ef4444'],
+         ['平均獲利','+'+avgW+'%','#22c55e'],['平均虧損',avgL+'%','#ef4444']].map(([l,v,c])=>
+        '<div style="background:var(--card);border-radius:7px;padding:10px;text-align:center">'
+          +'<div style="font-size:9px;color:var(--dim);margin-bottom:3px">'+l+'</div>'
+          +'<div style="font-size:22px;font-weight:bold;color:'+c+'">'+v+'</div>'
+        +'</div>').join('')+'</div>'
+      +'<div style="background:var(--card);border-radius:7px;padding:9px 12px;margin-bottom:10px">'
+        +'<div style="font-size:9px;color:var(--dim);margin-bottom:5px">整體勝率分佈</div>'
+        +'<div style="display:flex;height:12px;border-radius:3px;overflow:hidden;margin-bottom:5px">'
+          +'<div style="width:'+wr+'%;background:#22c55e"></div><div style="flex:1;background:#ef4444"></div>'
+        +'</div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--mid)">'
+          +'<span>&#x1f7e2; 勝 '+wins+'次 ('+wr+'%)</span><span>&#x1f534; 敗 '+(tot-wins)+'次 ('+(100-wr).toFixed(1)+'%)</span>'
+        +'</div>'
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--mid);margin-bottom:6px">各形態歷史勝率</div>'
+      +Object.entries(byP).map(([pat,d])=>
+        '<div style="background:var(--card);border-radius:6px;padding:8px 10px;margin-bottom:4px;display:flex;align-items:center;gap:8px">'
+          +'<div style="flex:1;font-size:11px">'+pat+'</div>'
+          +'<div style="display:flex;align-items:center;gap:8px">'
+            +'<span style="font-size:9px;color:var(--dim)">'+d.t+'次</span>'
+            +'<div style="width:70px;height:4px;background:var(--bd);border-radius:2px;overflow:hidden">'
+              +'<div style="width:'+(d.w/d.t*100).toFixed(0)+'%;height:100%;background:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+'"></div>'
+            +'</div>'
+            +'<span style="font-size:12px;font-weight:bold;color:'+(d.w/d.t>0.5?'#22c55e':'#ef4444')+';min-width:32px">'+(d.w/d.t*100).toFixed(0)+'%</span>'
+          +'</div>'
+        +'</div>').join('')
+      +'<div style="font-size:10px;color:var(--mid);margin:10px 0 5px">交易記錄 (最新優先)</div>'
+      +'<div style="max-height:340px;overflow-y:auto">'
+      +S.btR.slice().reverse().map(r=>
+        '<div style="background:var(--card);border-radius:5px;padding:7px 9px;margin-bottom:4px;border-left:3px solid '+(r.result==='WIN'?'#22c55e':'#ef4444')+';display:flex;justify-content:space-between;align-items:center">'
+          +'<div><span style="font-size:9px;color:var(--dim)">'+r.date+' </span><span style="font-size:10px">'+r.pattern+'</span>'
+            +'<div style="font-size:9px;color:var(--dim);margin-top:1px">進:'+fp(r.entry)+' → 出:'+fp(r.exit)+(r.exitType?' ('+r.exitType+')':'')+'</div></div>'
+          +'<div style="text-align:right">'
+            +'<div style="font-size:11px;font-weight:bold;color:'+(r.result==='WIN'?'#22c55e':'#ef4444')+'">'+(r.pnl>0?'+':'')+r.pnl+'%</div>'
+            +'<div style="font-size:9px;color:var(--dim)">'+r.bars+'根K棒</div>'
+          +'</div>'
+        +'</div>').join('')
+      +'</div>';}
+  if(S.tab==='config'){
+    const cfgRows=[
+      ['atr_period','ATR 週期','number'],['atr_sl_mult','停損倍數 N','number'],
+      ['atr_tp_mult','停盈倍數 M','number'],['atr_trail_mult','移動停損倍數 T','number'],
+      ['rsi_period','RSI 週期','number'],['rsi_slow_period','RSI 慢線週期','number'],
+      ['rsi_oversold','RSI 超賣','number'],['rsi_overbought','RSI 超買','number'],
+      ['vol_lookback','成交量回看根數','number'],['vol_surge_mult','成交量放大倍數','number'],
+      ['ma200_proximity','MA200 接近閾值','number'],['min_signal_score','最低觸發分數','number'],
+      ['max_hold_bars','最大持倉K棒數','number'],
+    ];
+    html+='<div style="background:var(--card);border-radius:8px;padding:14px;margin-top:4px">'
+      +'<div style="font-size:13px;color:var(--bl);margin-bottom:10px;font-weight:bold">⚙ 全局參數設定 (Global Config)</div>'
+      +'<div style="font-size:10px;color:var(--dim);margin-bottom:12px;line-height:1.6">'
+        +'所有閾值已從程式碼中抽離為全局變數。修改後點「套用並重新計算」即時生效。'
+      +'</div>'
+      +cfgRows.map(([k,l,t])=>
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #162233">'
+          +'<label style="font-size:11px;color:var(--mid)">'+l+'</label>'
+          +'<input id="cfg_'+k+'" type="number" step="any" value="'+CFG[k]+'" '
+            +'style="width:70px;background:#0a1628;border:1px solid #162233;border-radius:3px;color:var(--text);padding:3px 6px;font-family:monospace;font-size:12px;text-align:right">'
+        +'</div>').join('')
+      +'<div style="display:flex;gap:8px;margin-top:14px">'
+        +'<button onclick="applyCfg()" style="flex:1;padding:8px;border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:4px;font-size:12px">套用並重新計算</button>'
+        +'<button onclick="resetCfg()" style="padding:8px 12px;border:1px solid #2d4156;background:transparent;color:#5a7394;border-radius:4px;font-size:12px">重置預設</button>'
+      +'</div>'
+      +'<div style="margin-top:14px;font-size:10px;color:#2d4156;line-height:1.7">'
+        +'<div style="color:#f59e0b;margin-bottom:4px">公式對照</div>'
+        +'<div>止損 SL = 進場價 - (N × ATR)</div>'
+        +'<div>止盈 TP = 進場價 + (M × ATR)</div>'
+        +'<div>移動停損 = 最高價 - (T × ATR)</div>'
+        +'<div style="margin-top:4px">進場 = 訊號觸發後下一根K棒開盤價</div>'
+        +'<div>RSI確認 = RSI快線 > RSI慢線(SMA'+CFG.rsi_slow_period+')</div>'
+      +'</div>'
+    +'</div>';
+  }
+  document.getElementById('chart-content').innerHTML=html;}
+
+function renderPanel(){
+  if(!S.data.length){
+    document.getElementById('panel-content').innerHTML='<div style="color:#2d4156;font-size:11px;text-align:center;padding:30px 10px">等待資料載入…</div>';
+    return;}
+  const px=S.cl[S.cl.length-1]||0,r=S.rsi[S.rsi.length-1];
+  const ml=S.macd.line[S.macd.line.length-1],ms=S.macd.sig[S.macd.sig.length-1];
+  const m2=S.ma200[S.ma200.length-1],abv=m2!=null&&px>m2;
+  const bbu=S.bb.up[S.bb.up.length-1],bbl=S.bb.lo[S.bb.lo.length-1];
+  const m5=S.ma50[S.ma50.length-1];
+  const rows=[
+    {l:'RSI(14)',v:r!=null?r.toFixed(1):null,s:r==null?'N/A':r<30?'超賣🟢':r>70?'超買🔴':'中性',c:r<30?'#22c55e':r>70?'#ef4444':'#5a7394'},
+    {l:'MACD訊號',v:null,s:ml==null?'計算中':ml>ms?'黃金交叉↑':'死亡交叉↓',c:ml>ms?'#22c55e':'#ef4444'},
+    {l:'EMA100',v:S.emas[100]?fp(S.emas[100][S.emas[100].length-1]):'—',
+      s:S.emas[100]&&S.emas[100][S.emas[100].length-1]!=null?(px>S.emas[100][S.emas[100].length-1]?'站上':'跌破'):'N/A',
+      c:S.emas[100]&&S.emas[100][S.emas[100].length-1]!=null&&px>S.emas[100][S.emas[100].length-1]?'#22c55e':'#ef4444'},
+    {l:'EMA200',v:m2?fp(m2):'資料不足',s:m2?abv?'站上(多)':'跌破(空)':'—',c:abv?'#22c55e':m2?'#ef4444':'#2d4156'},
+    {l:'EMA300',v:S.emas[300]?fp(S.emas[300][S.emas[300].length-1]):'—',
+      s:S.emas[300]&&S.emas[300][S.emas[300].length-1]!=null?(px>S.emas[300][S.emas[300].length-1]?'站上':'跌破'):'N/A',
+      c:S.emas[300]&&S.emas[300][S.emas[300].length-1]!=null&&px>S.emas[300][S.emas[300].length-1]?'#22c55e':'#ef4444'},
+    {l:'EMA500',v:S.emas[500]?fp(S.emas[500][S.emas[500].length-1]):'—',
+      s:S.emas[500]&&S.emas[500][S.emas[500].length-1]!=null?(px>S.emas[500][S.emas[500].length-1]?'站上':'跌破'):'N/A',
+      c:S.emas[500]&&S.emas[500][S.emas[500].length-1]!=null&&px>S.emas[500][S.emas[500].length-1]?'#22c55e':'#ef4444'},
+    {l:'BB上軌',v:bbu?fp(bbu):'—',s:bbu?px>bbu?'已突破':'正常':'—',c:px>bbu?'#f59e0b':'#5a7394'},
+    {l:'BB下軌',v:bbl?fp(bbl):'—',s:bbl?px<bbl?'已跌破':'正常':'—',c:px<bbl?'#ef4444':'#5a7394'},
+    {l:'POC',v:S.poc?fp(S.poc):'—',s:S.poc?px>S.poc?'高於POC':'低於POC':'—',c:S.poc&&px>S.poc?'#22c55e':'#ef4444'},
+    {l:'風險指數',v:S.riskA[S.riskA.length-1]!=null?S.riskA[S.riskA.length-1]:'—',
+      s:S.riskA[S.riskA.length-1]!=null?(S.riskA[S.riskA.length-1]>=75?'\u26A0 危險':S.riskA[S.riskA.length-1]>=50?'\u26A1 警戒':'\u2713 安全'):'N/A',
+      c:S.riskA[S.riskA.length-1]>=75?'#ef4444':S.riskA[S.riskA.length-1]>=50?'#f97316':'#22c55e'},
+    {l:'ATR('+CFG.atr_period+')',v:S.atrA[S.atrA.length-1]?fp(S.atrA[S.atrA.length-1]):'—',s:S.atrA[S.atrA.length-1]?((S.atrA[S.atrA.length-1]/px*100).toFixed(1)+'%波幅'):'N/A',c:'#5a7394'},
+    {l:'RSI慢線',v:S.rsiSlow[S.rsiSlow.length-1]!=null?S.rsiSlow[S.rsiSlow.length-1].toFixed(1):'—',s:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null)?(r>S.rsiSlow[S.rsiSlow.length-1]?'快>慢 多':'快<慢 空'):'N/A',c:(r!=null&&S.rsiSlow[S.rsiSlow.length-1]!=null&&r>S.rsiSlow[S.rsiSlow.length-1])?'#22c55e':'#ef4444'},
+  ];
+  const last=S.sigs[S.sigs.length-1];const{byP}=bStats();
+  let html='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin-bottom:7px">▸ 當前指標狀態</div>'
+    +rows.map(x=>'<div class="prow">'
+      +'<span style="font-size:10px;color:var(--dim)">'+x.l+'</span>'
+      +'<div style="text-align:right">'+(x.v?'<span style="font-size:9px;color:var(--mid);margin-right:4px">'+x.v+'</span>':'')+'<span style="font-size:10px;color:'+x.c+'">'+x.s+'</span></div>'
+    +'</div>').join('');
+  if(last){const bp=byP[last.pattern];
+    html+='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin:13px 0 7px">▸ 最新形態信號</div>'
+      +'<div style="background:#091525;border-radius:8px;border:1px solid #1a3a5f;padding:10px">'
+        +'<div style="font-size:13px;font-weight:bold;margin-bottom:3px">'+last.pattern+'</div>'
+        +'<div style="font-size:9px;color:var(--dim);margin-bottom:7px">'+last.date+' · 強度 '+last.str+'/'+last.maxStr+'</div>'
+        +'<div style="background:var(--bd);border-radius:2px;height:4px;margin-bottom:9px">'
+          +'<div style="width:'+(last.str/last.maxStr*100).toFixed(0)+'%;height:100%;border-radius:2px;background:'+(last.str/last.maxStr>0.7?'#22c55e':last.str/last.maxStr>0.5?'#f59e0b':'#ef4444')+'"></div>'
+        +'</div>'
+        +'<div style="margin-bottom:10px">'+last.conds.map(c=>'<div style="font-size:10px;color:#22c55e;padding:1.5px 0">✓ '+c+'</div>').join('')+'</div>'
+        +'<div style="background:#0a1424;border-radius:6px;padding:9px">'
+          +[['進場價格',fp(last.entry),'#60a5fa',''],['止盈目標 TP',fp(last.tp),'#22c55e','+'+last.tpPct+'%'],['止損位置 SL',fp(last.sl),'#ef4444','-'+last.slPct+'%']].map(([l,v,c,tag])=>
+            '<div style="display:flex;justify-content:space-between;padding:4px 0">'
+              +'<span style="font-size:9px;color:var(--dim)">'+l+'</span>'
+              +'<span style="font-size:12px;font-weight:bold;color:'+c+'">'+v+(tag?' <span style="font-size:9px;opacity:.7">'+tag+'</span>':'')+'</span>'
+            +'</div>').join('')
+          +'<div style="border-top:1px solid var(--bd);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between">'
+            +'<span style="font-size:9px;color:var(--dim)">風報比 R:R</span>'
+            +'<span style="font-size:12px;color:#f59e0b;font-weight:bold">1:'+(last.tpPct/last.slPct).toFixed(1)+'</span>'
+          +'</div>'
+        +'</div>'
+        +(bp?'<div style="margin-top:8px;background:#0a1424;border-radius:6px;padding:8px;text-align:center">'
+            +'<div style="font-size:9px;color:var(--dim);margin-bottom:2px">此形態歷史勝率</div>'
+            +'<div style="font-size:24px;font-weight:bold;color:'+(bp.w/bp.t>0.5?'#22c55e':'#ef4444')+'">'+(bp.w/bp.t*100).toFixed(0)+'%</div>'
+            +'<div style="font-size:9px;color:#2d4156">'+bp.w+'/'+bp.t+' 次達標</div>'
+          +'</div>':'')
+      +'</div>';}
+  if(S.entryMarkers.length||S.exitMarkers.length){
+    html+='<div style="font-size:9px;color:#2d4156;letter-spacing:.05em;margin:13px 0 7px">▸ 入場/出場標記</div>';
+    S.entryMarkers.slice(-3).reverse().forEach(em=>{
+      html+='<div style="background:#0a1a12;border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid #22c55e">'
+        +'<div style="display:flex;justify-content:space-between">'
+        +'<span style="font-size:10px;color:#22c55e">▲ BUY '+em.date+'</span>'
+        +'<span style="font-size:11px;font-weight:bold;color:#22c55e">勝率'+em.wr+'%</span>'
+        +'</div><div style="font-size:9px;color:#2d4156;margin-top:2px">'+em.pattern+' · '+fp(em.entry)+'</div></div>';
+    });
+    S.exitMarkers.slice(-3).reverse().forEach(ex=>{
+      html+='<div style="background:#1a0a0a;border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid #ef4444">'
+        +'<div style="display:flex;justify-content:space-between">'
+        +'<span style="font-size:10px;color:#ef4444">▼ EXIT '+ex.date+'</span>'
+        +'<span style="font-size:11px;font-weight:bold;color:#ef4444">風險'+ex.risk+'</span>'
+        +'</div><div style="font-size:9px;color:#2d4156;margin-top:2px">'+ex.reason+' · '+ex.entryPattern+'</div></div>';
+    });
+  }
+  html+='<div style="margin:12px 0 6px;font-size:9px;color:#2d4156">▸ 歷史信號 ('+S.sigs.length+')</div>'
+    +S.sigs.slice().reverse().slice(0,8).map(s=>{
+      const bt=S.btR.find(r=>r.index===s.index);
+      const col=bt?.result==='WIN'?'#22c55e':bt?.result==='LOSS'?'#ef4444':'#2d4156';
+      return'<div style="background:var(--bg);border-radius:4px;padding:5px 7px;margin-bottom:3px;border-left:3px solid '+col+'">'
+        +'<div style="display:flex;justify-content:space-between">'
+          +'<span style="font-size:9px;color:var(--dim)">'+s.date+' '+s.pattern+'</span>'
+          +(bt?'<span style="font-size:10px;font-weight:bold;color:'+col+'">'+(bt.pnl>0?'+':'')+bt.pnl+'%</span>':'')
+        +'</div>'
+        +'<div style="font-size:9px;color:#2d4156;margin-top:1px">進:'+fp(s.entry)+' 盈:'+fp(s.tp)+' 損:'+fp(s.sl)+'</div>'
+      +'</div>';}).join('')
+    +(!S.sigs.length&&S.data.length?'<div style="font-size:10px;color:#2d4156;text-align:center;padding:20px 0">目前無滿足條件的形態信號</div>':'');
+  document.getElementById('panel-content').innerHTML=html;}
+
+/* ══ FETCH & ACTIONS ════════════════════════════════════ */
+async function fetchData(){
+  S.loading=true;S.error=null;renderAll();
+  try{
+    const ex=EX[S.ex],sym=ex.sym(S.coin),n=S.ex==='binance'?1000:({'3M':100,'1M':300,'1W':300,'1D':300,'4H':300,'1H':300,'15M':300}[S.tf]);
+    const data=await ex.get(sym,S.tf,n);
+    if(!data||data.length<30)throw new Error('資料不足，請稍後重試');
+    S.data=data;compute();S.updated=new Date().toLocaleTimeString();
+  }catch(e){
+    const msg=e.message||'載入失敗';
+    S.error=(msg.includes('400')||msg.includes('HTTP 4'))?
+      '找不到 '+EX[S.ex].sym(S.coin)+' ── 請確認是加密幣代號（如 BTC、PEPE），股票不適用':msg;
+  }finally{S.loading=false;renderAll();}
+}
+function setEx(k){S.ex=k;fetchData();}
+function setTF(t){S.tf=t;fetchData();}
+function setTab(t){S.tab=t;renderCharts();}
+function setRange(r){S.range=r;renderCharts();}
+function toggleInd(k){IND[k]=!IND[k];renderCharts();}
 function applyCfg(){
   const keys=['atr_period','atr_sl_mult','atr_tp_mult','atr_trail_mult',
     'rsi_period','rsi_slow_period','rsi_oversold','rsi_overbought',
